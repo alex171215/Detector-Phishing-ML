@@ -1,688 +1,487 @@
 import os
 import re
+import html as htmllib
 import urllib.parse
 import streamlit as st
 import pandas as pd
-import numpy as np
 
 # ==============================================================================
-# ⚙️ CONFIGURACIÓN GLOBAL DE STREAMLIT
+# CONFIGURACIÓN DE PÁGINA
 # ==============================================================================
 st.set_page_config(
-    page_title="PhishGuard AI — Intelligent Threat Defense",
+    page_title="Detector gratuito de Phishing | PhishGuard",
     page_icon="🛡️",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed",
 )
 
-# Intentamos importar extractor.py si existe
+# Control de navegación mediante Query Params
+current_page = st.query_params.get("page", "analizar")
+if isinstance(current_page, list):
+    current_page = current_page[0]
+if current_page not in ("analizar", "modelos", "ayuda"):
+    current_page = "analizar"
+
+# ==============================================================================
+# 🧬 EXTRACTOR DE CARACTERÍSTICAS LÉXICAS
+# (Compatible con extractor.py del proyecto)
+# ==============================================================================
 try:
     from extractor import extract_features_from_url
 except ImportError:
     def extract_features_from_url(url: str) -> pd.DataFrame:
-        parsed = urllib.parse.urlparse(url)
-        url_length = len(url)
-        domain_length = len(parsed.netloc)
-        is_ip = 1 if re.match(r'^[0-9]+(?:\.[0-9]+){3}$', parsed.netloc) else 0
-        is_https = 1 if parsed.scheme == 'https' else 0
-        digits = sum(c.isdigit() for c in url)
-        digit_ratio = digits / url_length if url_length > 0 else 0
-        special_chars = sum(not c.isalnum() for c in url)
+        p = urllib.parse.urlparse(url)
+        n = len(url)
         return pd.DataFrame({
-            'url_length': [url_length],
-            'domain_length': [domain_length],
-            'is_ip': [is_ip],
-            'is_https': [is_https],
-            'digit_ratio': [digit_ratio],
-            'special_char_count': [special_chars]
+            "url_length": [n],
+            "domain_length": [len(p.netloc)],
+            "is_ip": [1 if re.match(r"^[0-9]+(?:\.[0-9]+){3}$", p.netloc) else 0],
+            "is_https": [1 if p.scheme == "https" else 0],
+            "digit_ratio": [sum(c.isdigit() for c in url) / n if n else 0],
+            "special_char_count": [sum(not c.isalnum() for c in url)],
         })
 
-# Carga de joblib para el modelo ML
+# Carga de joblib
 try:
     import joblib
 except ImportError:
     joblib = None
 
+
+def md(s: str):
+    """Renderiza HTML en Streamlit sin que el formateo de indentación lo rompa."""
+    clean = "\n".join(l.strip() for l in s.splitlines() if l.strip())
+    st.markdown(clean, unsafe_allow_html=True)
+
+
 # ==============================================================================
-# 🎨 HIGH-END CYBERSECURITY & SMART TECH DESIGN SYSTEM (CSS)
+# 🎨 ESTILOS (Sistema visual NordVPN: azul #4687ff, navy #010e32, blanco)
 # ==============================================================================
-st.markdown("""
+CSS = """
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{
+  --blue:#4687ff; --blue-d:#2f6fe8; --navy:#010e32; --ink:#010e32; --muted:#5b6478;
+  --line:#e3e8f1; --soft:#f4f7fb; --ok:#0a8f5c; --bad:#d92d20; --ok-bg:#e8f7f0; --bad-bg:#fdecea;
+}
+html, body, .stApp, [class*="css"]{
+  font-family:'Inter',-apple-system,'Segoe UI',Roboto,sans-serif !important;
+  background:#fff !important; color:var(--ink) !important;
+}
+html{scroll-behavior:smooth;}
+#MainMenu, header[data-testid="stHeader"], footer, div[data-testid="stToolbar"], div[data-testid="stDecoration"]{display:none !important;}
+.block-container{padding:7.8rem 2.5rem 0 2.5rem !important; max-width:1240px !important;}
 
-    /* Global Reset & Base */
-    html, body, [class*="css"], .stApp {
-        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
-        background-color: #060913 !important;
-        color: #e2e8f0;
-    }
+/* ---------- Barra superior de estado ---------- */
+.pg-status{position:fixed;top:0;left:0;right:0;height:36px;background:var(--soft);border-bottom:1px solid var(--line);
+  z-index:1000000;display:flex;align-items:center;justify-content:center;gap:12px;font-size:.8rem;color:var(--muted);padding:0 1rem;white-space:nowrap;overflow:hidden;}
+.pg-status b{color:var(--ink);font-weight:600;}
+.pg-dot{width:3px;height:3px;border-radius:50%;background:#aab3c5;}
 
-    /* Ocultar elementos por defecto de Streamlit */
-    #MainMenu, header, footer {visibility: hidden;}
-    .block-container {
-        padding-top: 1.5rem !important;
-        padding-bottom: 3rem !important;
-        max-width: 1200px !important;
-    }
+/* ---------- Encabezado ---------- */
+.pg-header{position:fixed;top:36px;left:0;right:0;height:68px;background:#fff;border-bottom:1px solid var(--line);
+  z-index:999999;display:flex;align-items:center;padding:0 2.5rem;}
+.pg-header-in{max-width:1240px;width:100%;margin:0 auto;display:flex;align-items:center;gap:35px;}
+.pg-logo{display:flex;align-items:center;gap:10px;text-decoration:none !important;}
+.pg-logo-ico{width:32px;height:32px;border-radius:9px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;}
+.pg-logo-txt{font-size:1.25rem;font-weight:800;letter-spacing:-.5px;color:var(--ink) !important;}
+.pg-nav{display:flex;gap:6px;align-items:center;}
+.pg-nav a{padding:8px 14px;border-radius:8px;text-decoration:none !important;font-size:.95rem;font-weight:500;color:var(--ink) !important;transition:all .15s ease;}
+.pg-nav a:hover{background:var(--soft);}
+.pg-nav a.on{color:var(--blue) !important;font-weight:700;}
+.pg-header-cta{margin-left:auto;display:flex;gap:10px;align-items:center;}
+.pg-btn{display:inline-block;background:var(--blue);color:#fff !important;font-weight:700;font-size:.92rem;padding:9px 18px;border-radius:8px;text-decoration:none !important;}
+.pg-btn:hover{background:var(--blue-d);}
 
-    /* Top Navbar */
-    .navbar-container {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 16px 24px;
-        background: rgba(13, 20, 38, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 16px;
-        backdrop-filter: blur(20px);
-        margin-bottom: 30px;
-    }
-    .nav-brand {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    .nav-logo-icon {
-        background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
-        width: 42px;
-        height: 42px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 22px;
-        box-shadow: 0 0 20px rgba(0, 242, 254, 0.35);
-    }
-    .nav-title {
-        font-size: 1.35rem;
-        font-weight: 800;
-        letter-spacing: -0.5px;
-        color: #ffffff;
-    }
-    .nav-title span {
-        background: linear-gradient(90deg, #00f2fe, #4facfe);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    .nav-badge {
-        background: rgba(0, 242, 254, 0.1);
-        border: 1px solid rgba(0, 242, 254, 0.3);
-        color: #38bdf8;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.78rem;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background-color: #10b981;
-        box-shadow: 0 0 10px #10b981;
-        animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-        70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-    }
+/* ---------- Hero ---------- */
+.hero-h1{font-size:2.6rem;font-weight:800;line-height:1.12;letter-spacing:-1.2px;margin:6px 0 22px;}
+.hero-lbl{font-size:.95rem;font-weight:600;margin-bottom:8px;}
+.stTextInput > div > div > input{background:#fff !important;color:var(--ink) !important;border:1.5px solid #cfd7e6 !important;
+  border-radius:10px !important;padding:15px 16px !important;font-size:.98rem !important;font-family:'JetBrains Mono',monospace !important;}
+.stTextInput > div > div > input:focus{border-color:var(--blue) !important;box-shadow:0 0 0 3px rgba(70,135,255,.18) !important;}
+.stTextInput > div{border:none !important;}
 
-    /* Hero Section */
-    .hero-box {
-        text-align: center;
-        padding: 40px 20px 30px;
-        position: relative;
-    }
-    .hero-tag {
-        display: inline-block;
-        background: rgba(99, 102, 241, 0.15);
-        border: 1px solid rgba(99, 102, 241, 0.35);
-        color: #a5b4fc;
-        padding: 6px 18px;
-        border-radius: 30px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        margin-bottom: 20px;
-    }
-    .hero-heading {
-        font-size: 3.4rem;
-        font-weight: 800;
-        line-height: 1.15;
-        letter-spacing: -1.5px;
-        color: #ffffff;
-        margin-bottom: 18px;
-    }
-    .hero-heading .gradient-text {
-        background: linear-gradient(135deg, #00f2fe 0%, #4facfe 50%, #9066ff 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    .hero-sub {
-        font-size: 1.15rem;
-        color: #94a3b8;
-        max-width: 680px;
-        margin: 0 auto 30px;
-        line-height: 1.6;
-    }
+/* Botones */
+.stButton > button{border-radius:10px !important;font-weight:600 !important;transition:all .15s ease;}
+.stButton > button[kind="primary"], .stButton > button[data-testid="stBaseButton-primary"]{
+  background:var(--blue) !important;color:#fff !important;border:none !important;padding:14px 26px !important;font-size:1rem !important;font-weight:700 !important;}
+.stButton > button[kind="primary"]:hover, .stButton > button[data-testid="stBaseButton-primary"]:hover{background:var(--blue-d) !important;}
+.stButton > button[kind="secondary"], .stButton > button[data-testid="stBaseButton-secondary"]{
+  background:#fff !important;color:var(--ink) !important;border:1.5px solid var(--line) !important;font-size:.82rem !important;padding:8px 10px !important;}
+.stButton > button[kind="secondary"]:hover, .stButton > button[data-testid="stBaseButton-secondary"]:hover{border-color:var(--blue) !important;color:var(--blue) !important;}
+.try-lbl{font-size:.85rem;color:var(--muted);margin:14px 0 6px;}
 
-    /* Stats Banner */
-    .stats-row {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 16px;
-        margin: 25px 0 40px;
-    }
-    .stat-card {
-        background: rgba(15, 23, 42, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        padding: 20px;
-        border-radius: 16px;
-        text-align: center;
-        backdrop-filter: blur(12px);
-    }
-    .stat-num {
-        font-size: 1.8rem;
-        font-weight: 800;
-        background: linear-gradient(90deg, #ffffff, #cbd5e1);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    .stat-label {
-        font-size: 0.82rem;
-        color: #64748b;
-        text-transform: uppercase;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        margin-top: 4px;
-    }
+/* ---------- Tarjeta de resultado ---------- */
+.res-card{border:1.5px solid var(--line);border-radius:20px;padding:26px;background:#fff;box-shadow:0 10px 30px rgba(1,14,50,.06);}
+.res-banner{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;margin-bottom:18px;}
+.res-banner.ok{background:var(--ok-bg);} .res-banner.bad{background:var(--bad-bg);}
+.res-banner .ic{font-size:1.5rem;}
+.res-banner .t{font-weight:800;font-size:1.1rem;} .res-banner.ok .t{color:var(--ok);} .res-banner.bad .t{color:var(--bad);}
+.res-banner .s{font-size:.85rem;color:var(--muted);}
+.meter{height:8px;border-radius:99px;background:var(--soft);overflow:hidden;margin:0 0 22px;}
+.meter > div{height:100%;border-radius:99px;}
+.res-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 24px;}
+.f-lbl{font-size:.82rem;color:var(--muted);margin-bottom:3px;}
+.f-val{font-size:1.02rem;font-weight:700;word-break:break-word;}
+.f-val.ok{color:var(--ok);} .f-val.bad{color:var(--bad);} .f-val.blue{color:var(--blue);font-size:.9rem;}
+.res-empty{border:1.5px dashed #cfd7e6;border-radius:20px;padding:40px 26px;text-align:center;color:var(--muted);}
 
-    /* Interactive Scanner Console */
-    .scanner-panel {
-        background: linear-gradient(180deg, rgba(18, 26, 49, 0.8) 0%, rgba(10, 15, 30, 0.95) 100%);
-        border: 1px solid rgba(0, 242, 254, 0.25);
-        border-radius: 24px;
-        padding: 35px;
-        box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.7), 0 0 30px -5px rgba(0, 242, 254, 0.15);
-        margin-bottom: 35px;
-    }
-    .scanner-label {
-        font-size: 1rem;
-        font-weight: 700;
-        color: #38bdf8;
-        margin-bottom: 12px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
+/* ---------- Índice y secciones ---------- */
+.toc{display:flex;flex-wrap:wrap;gap:10px;margin:56px 0 8px;padding:20px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+.toc a{text-decoration:none !important;color:var(--ink) !important;font-size:.9rem;font-weight:500;padding:7px 14px;border-radius:99px;background:var(--soft);}
+.toc a:hover{color:var(--blue) !important;}
+.sec{padding-top:48px;}
+.sec h2{font-size:1.9rem;font-weight:800;letter-spacing:-.8px;margin:0 0 14px;}
+.sec p{font-size:1rem;line-height:1.7;color:#2b3550;max-width:860px;}
+.tbl{width:100%;border-collapse:collapse;margin-top:8px;border:1.5px solid var(--line);border-radius:14px;overflow:hidden;}
+.tbl td{padding:18px 20px;border-bottom:1px solid var(--line);vertical-align:top;font-size:.96rem;line-height:1.6;color:#2b3550;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl td:first-child{width:28%;font-weight:700;color:var(--ink);background:var(--soft);}
 
-    /* Streamlit Input Styling */
-    .stTextInput > div > div > input {
-        background-color: #0b1120 !important;
-        color: #ffffff !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
-        border-radius: 12px !important;
-        padding: 14px 18px !important;
-        font-size: 1.05rem !important;
-        font-family: 'JetBrains Mono', monospace !important;
-        transition: all 0.3s ease !important;
-    }
-    .stTextInput > div > div > input:focus {
-        border-color: #00f2fe !important;
-        box-shadow: 0 0 15px rgba(0, 242, 254, 0.3) !important;
-    }
+/* CTA Banner */
+.cta{margin-top:56px;background:var(--navy);border-radius:24px;padding:44px 48px;display:flex;align-items:center;justify-content:space-between;gap:30px;flex-wrap:wrap;}
+.cta h3{color:#fff;font-size:1.7rem;font-weight:800;letter-spacing:-.6px;margin:0 0 8px;}
+.cta p{color:#b8c3de;margin:0;font-size:1rem;}
 
-    /* Primary CTA Button */
-    .stButton > button {
-        background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%) !important;
-        color: #050b14 !important;
-        font-weight: 800 !important;
-        font-size: 1.05rem !important;
-        border: none !important;
-        border-radius: 12px !important;
-        padding: 14px 28px !important;
-        width: 100% !important;
-        letter-spacing: 0.3px !important;
-        box-shadow: 0 10px 25px -5px rgba(0, 242, 254, 0.4) !important;
-        transition: all 0.3s ease !important;
-    }
-    .stButton > button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 15px 35px -5px rgba(0, 242, 254, 0.6) !important;
-    }
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:10px;}
+.step{background:var(--soft);border-radius:16px;padding:24px;}
+.step .n{width:34px;height:34px;border-radius:50%;background:var(--blue);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;margin-bottom:14px;}
+.step h4{margin:0 0 6px;font-size:1.05rem;font-weight:700;} .step p{margin:0;font-size:.93rem;color:var(--muted);line-height:1.6;}
 
-    /* Quick Test Chips */
-    .chips-label {
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #94a3b8;
-        margin-bottom: 8px;
-    }
+details.faq{border-bottom:1px solid var(--line);padding:18px 0;max-width:900px;}
+details.faq summary{cursor:pointer;font-weight:700;font-size:1.03rem;list-style:none;display:flex;justify-content:space-between;}
+details.faq summary::after{content:"+";color:var(--blue);font-size:1.4rem;line-height:1;}
+details.faq[open] summary::after{content:"–";}
+details.faq p{margin:12px 0 0;color:#2b3550;line-height:1.7;font-size:.97rem;}
 
-    /* Verdict Card Styles */
-    .verdict-banner {
-        border-radius: 20px;
-        padding: 28px;
-        margin: 25px 0;
-        backdrop-filter: blur(16px);
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-    .verdict-danger-bg {
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(185, 28, 28, 0.05) 100%);
-        border: 2px solid #ef4444;
-        box-shadow: 0 10px 30px -5px rgba(239, 68, 68, 0.3);
-    }
-    .verdict-safe-bg {
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.05) 100%);
-        border: 2px solid #10b981;
-        box-shadow: 0 10px 30px -5px rgba(16, 185, 129, 0.3);
-    }
-    .verdict-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .verdict-title {
-        font-size: 1.6rem;
-        font-weight: 800;
-        letter-spacing: -0.5px;
-    }
-    .verdict-danger-title { color: #f87171; }
-    .verdict-safe-title { color: #34d399; }
-    
-    .verdict-pill {
-        padding: 6px 16px;
-        border-radius: 30px;
-        font-weight: 800;
-        font-size: 1.1rem;
-    }
-    .verdict-danger-pill {
-        background: #ef4444;
-        color: #ffffff;
-    }
-    .verdict-safe-pill {
-        background: #10b981;
-        color: #ffffff;
-    }
-    .verdict-desc {
-        font-size: 1.05rem;
-        color: #cbd5e1;
-        line-height: 1.5;
-    }
+/* ---------- Modelos / Ayuda ---------- */
+.pg-title{font-size:2.3rem;font-weight:800;letter-spacing:-1px;margin:6px 0 10px;}
+.pg-sub{font-size:1.05rem;color:var(--muted);line-height:1.6;max-width:860px;margin-bottom:30px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+.card{background:#fff;border:1.5px solid var(--line);border-radius:18px;padding:28px;}
+.card h3{margin:0 0 12px;font-size:1.25rem;font-weight:800;color:var(--blue);}
+.card ul, .card ol{margin:0;padding-left:20px;line-height:1.8;color:#2b3550;font-size:.95rem;}
+.card.alert{background:var(--bad-bg);border-color:#f6c9c4;} .card.alert h3{color:var(--bad);}
+.card code{background:var(--soft);padding:2px 6px;border-radius:5px;font-size:.85em;}
 
-    /* Signal HUD Grid */
-    .hud-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 14px;
-        margin: 20px 0;
-    }
-    .hud-card {
-        background: rgba(15, 23, 42, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        padding: 16px;
-        text-align: center;
-    }
-    .hud-val {
-        font-size: 1.25rem;
-        font-weight: 700;
-        margin-bottom: 4px;
-    }
-    .hud-title {
-        font-size: 0.8rem;
-        color: #64748b;
-        font-weight: 600;
-        text-transform: uppercase;
-    }
+/* ---------- Pie de página ---------- */
+.foot{margin:80px -2.5rem 0;background:var(--soft);border-top:1px solid var(--line);padding:52px 2.5rem 30px;}
+.foot-in{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:1.3fr 1fr 1.6fr;gap:40px;}
+.foot h5{margin:0 0 14px;font-size:.95rem;font-weight:700;}
+.foot p, .foot li{font-size:.86rem;line-height:1.65;color:var(--muted);}
+.foot ul{list-style:none;margin:0;padding:0;} .foot li{margin-bottom:8px;}
+.foot .brand{font-size:1.25rem;font-weight:800;color:var(--ink);margin-bottom:10px;}
+.foot-bottom{max-width:1240px;margin:36px auto 0;padding-top:20px;border-top:1px solid var(--line);font-size:.8rem;color:#8791a7;}
 
-    /* Core Features Grid */
-    .features-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
-        margin: 40px 0;
-    }
-    .feature-card {
-        background: rgba(13, 20, 38, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 18px;
-        padding: 24px;
-        transition: transform 0.2s ease, border-color 0.2s ease;
-    }
-    .feature-card:hover {
-        transform: translateY(-4px);
-        border-color: rgba(0, 242, 254, 0.4);
-    }
-    .feature-icon {
-        font-size: 28px;
-        margin-bottom: 14px;
-    }
-    .feature-title {
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: #ffffff;
-        margin-bottom: 8px;
-    }
-    .feature-desc {
-        font-size: 0.92rem;
-        color: #94a3b8;
-        line-height: 1.5;
-    }
-
-    /* Premium Footer */
-    .site-footer {
-        background: rgba(13, 20, 38, 0.5);
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 20px;
-        padding: 30px;
-        margin-top: 50px;
-        text-align: center;
-    }
-    .authors-chips {
-        display: flex;
-        justify-content: center;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin: 15px 0;
-    }
-    .author-chip {
-        background: rgba(56, 189, 248, 0.08);
-        border: 1px solid rgba(56, 189, 248, 0.25);
-        color: #38bdf8;
-        padding: 6px 16px;
-        border-radius: 20px;
-        font-size: 0.88rem;
-        font-weight: 600;
-    }
+@media (max-width:900px){
+  .block-container{padding:7.6rem 1.2rem 0 1.2rem !important;}
+  .pg-header{padding:0 1rem;} .pg-header-in{gap:14px;} .pg-header-cta, .pg-logo-txt{display:none;}
+  .pg-nav a{padding:8px 8px;font-size:.85rem;}
+  .hero-h1{font-size:2rem;} .g2,.steps,.foot-in,.res-grid{grid-template-columns:1fr;}
+  .cta{padding:30px 24px;} .foot{margin:60px -1.2rem 0;padding:40px 1.2rem 24px;}
+  .pg-status{font-size:.72rem;}
+}
 </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(CSS, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🤖 MODEL LOADER & FALLBACK ENGINE
+# 🤖 DETECCIÓN Y CARGA AUTOMÁTICA DEL MODELO ML (.pkl)
 # ==============================================================================
+# INSTRUCCIÓN PARA EL EQUIPO:
+# Coloquen 'modelo_phishing.pkl', 'modelo_lr_phishing.pkl' o 'modelo_rf_phishing.pkl'
+# en la carpeta raíz del proyecto. La aplicación lo cargará y usará automáticamente.
 @st.cache_resource(show_spinner=False)
-def get_ml_pipeline():
-    possible_models = ["modelo_phishing.pkl", "modelo_lr_phishing.pkl", "modelo_rf_phishing.pkl"]
-    for path in possible_models:
-        if os.path.exists(path) and joblib is not None:
+def load_pipeline():
+    candidates = [
+        "modelo_phishing.pkl",
+        "modelo_lr_phishing.pkl",
+        "modelo_rf_phishing.pkl",
+        "modelo.pkl"
+    ]
+    for p in candidates:
+        if os.path.exists(p) and joblib is not None:
             try:
-                model = joblib.load(path)
-                return model, path
+                return joblib.load(p), p
             except Exception:
                 pass
+    # Búsqueda de respaldo si le dieron otro nombre al .pkl
+    if joblib is not None:
+        try:
+            for f in os.listdir("."):
+                if f.endswith(".pkl") and not f.startswith("."):
+                    try:
+                        return joblib.load(f), f
+                    except Exception:
+                        pass
+        except Exception:
+            pass
     return None, None
 
-pipeline, model_filename = get_ml_pipeline()
+
+pipeline_ml, pipeline_path = load_pipeline()
+
+SUSPICIOUS = ["login", "verify", "secure", "account", "update", "bank", "banco", "pago", "free", "bonus", "signin"]
+
+
+def heuristic_prob(has_https, is_ip, url_len, n_kw, n_special):
+    score = 10
+    if not has_https: score += 25
+    if is_ip: score += 35
+    if url_len > 60: score += 15
+    score += n_kw * 15
+    if n_special > 8: score += 10
+    return min(max(score / 100.0, 0.01), 0.99)
+
 
 # ==============================================================================
-# 🧭 TOP NAVIGATION BAR
+# 🔝 BARRA DE ESTADO + ENCABEZADO FIJO
 # ==============================================================================
-st.markdown("""
-<div class="navbar-container">
-    <div class="nav-brand">
-        <div class="nav-logo-icon">🛡️</div>
-        <div class="nav-title">PhishGuard <span>AI</span></div>
-    </div>
-    <div class="nav-badge">
-        <div class="status-dot"></div>
-        <span>AI Engine Online</span>
-    </div>
+motor_txt = f"Modelo ML activo ({pipeline_path})" if pipeline_ml is not None else "Modo heurístico (esperando .pkl)"
+on = lambda p: "on" if current_page == p else ""
+
+md(f"""
+<div class="pg-status">
+  <span>Motor: <b>{htmllib.escape(motor_txt)}</b></span><span class="pg-dot"></span>
+  <span>Dataset: <b>116,600+ URLs</b></span><span class="pg-dot"></span>
+  <span>Privacidad: <b>evaluación volátil en memoria</b></span>
 </div>
-""", unsafe_allow_html=True)
+<header class="pg-header"><div class="pg-header-in">
+  <a class="pg-logo" href="?page=analizar" target="_self">
+    <div class="pg-logo-ico">🛡️</div>
+    <span class="pg-logo-txt">PhishGuard</span>
+  </a>
+  <nav class="pg-nav">
+    <a class="{on('analizar')}" href="?page=analizar" target="_self">Analizar URL</a>
+    <a class="{on('modelos')}" href="?page=modelos" target="_self">Modelos IA</a>
+    <a class="{on('ayuda')}" href="?page=ayuda" target="_self">Ayuda y consejos</a>
+  </nav>
+  <div class="pg-header-cta">
+    <a class="pg-btn" href="?page=analizar" target="_self">Analizar URL</a>
+  </div>
+</div></header>
+""")
 
 # ==============================================================================
-# 🚀 HERO HEADER
+# 📄 PÁGINA 1: ANALIZAR URL (HERRAMIENTA PRINCIPAL)
 # ==============================================================================
-st.markdown("""
-<div class="hero-box">
-    <div class="hero-tag">✨ Inteligencia Artificial & Ciberseguridad de Precisión</div>
-    <h1 class="hero-heading">
-        Protección Inteligente Contra <br/>
-        <span class="gradient-text">Amenazas de Phishing en Tiempo Real</span>
-    </h1>
-    <p class="hero-sub">
-        Inspección léxica automatizada de URLs combinada con pipelines de Machine Learning entrenados para blindar la navegación frente a fraudes y robo de identidad.
-    </p>
-</div>
-""", unsafe_allow_html=True)
-
-# Estadísticas
-st.markdown("""
-<div class="stats-row">
-    <div class="stat-card">
-        <div class="stat-num">116,600+</div>
-        <div class="stat-label">URLs Entrenadas</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-num">22</div>
-        <div class="stat-label">Factores Léxicos</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-num">99.1%</div>
-        <div class="stat-label">Sensibilidad (Recall)</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-num">&lt; 20 ms</div>
-        <div class="stat-label">Tiempo de Inferencia</div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# ==============================================================================
-# 🔍 SCANNER & INSPECTION CONSOLE
-# ==============================================================================
-st.markdown("""
-<div class="scanner-panel">
-    <div class="scanner-label">
-        <span>⚡ Consola de Análisis Instantáneo</span>
-    </div>
-""", unsafe_allow_html=True)
-
-# Manejo de estado para URLs de ejemplo
-if "current_url_val" not in st.session_state:
-    st.session_state["current_url_val"] = "http://banco-pichincha-seguridad-login.net/actualizar-datos.php?id=82931"
-
-# Botones rápidos
-st.markdown("<div class='chips-label'>Pruebas rápidas con un clic:</div>", unsafe_allow_html=True)
-col_q1, col_q2, col_q3, col_q4 = st.columns(4)
-
-with col_q1:
-    if st.button("🚨 Phishing Bancario", key="btn_banco"):
-        st.session_state["current_url_val"] = "http://banco-pichincha-seguridad-login.net/actualizar-datos.php?id=82931"
-        st.rerun()
-
-with col_q2:
-    if st.button("🚨 Phishing con IP", key="btn_ip"):
-        st.session_state["current_url_val"] = "http://192.168.1.105/paypal/signin/verification.php"
-        st.rerun()
-
-with col_q3:
-    if st.button("✅ Google (Seguro)", key="btn_google"):
-        st.session_state["current_url_val"] = "https://www.google.com/search?q=machine+learning+cybersecurity"
-        st.rerun()
-
-with col_q4:
-    if st.button("✅ GitHub (Seguro)", key="btn_github"):
-        st.session_state["current_url_val"] = "https://github.com/alex171215/Detector-Phishing-ML"
-        st.rerun()
-
-# Campo de entrada
-input_url = st.text_input(
-    "URL a inspeccionar:",
-    value=st.session_state["current_url_val"],
-    placeholder="Pega aquí cualquier enlace sospechoso...",
-    label_visibility="collapsed"
-)
-
-scan_pressed = st.button("🚀 Iniciar Inspección de Seguridad")
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-# ==============================================================================
-# 📊 PROCESAMIENTO Y RESULTADOS
-# ==============================================================================
-if input_url.strip():
-    clean_url = input_url.strip()
-    df_features = extract_features_from_url(clean_url)
+if current_page == "analizar":
+    EJ_PHISH = "http://banco-pichincha-seguridad-login.net/actualizar-datos.php?id=82931"
     
-    parsed = urllib.parse.urlparse(clean_url)
-    is_https = (parsed.scheme.lower() == 'https')
-    is_ip = bool(re.match(r'^[0-9]+(?:\.[0-9]+){3}$', parsed.netloc))
-    url_len = len(clean_url)
-    suspicious_words = ["login", "verify", "secure", "account", "update", "bank", "banco", "pago", "free", "bonus", "signin"]
-    found_keywords = [w for w in suspicious_words if w in clean_url.lower()]
+    if "url_input" not in st.session_state:
+        st.session_state["url_input"] = EJ_PHISH
 
-    # Inferencia ML vs Heurística de Respaldo
-    if pipeline is not None:
-        try:
-            prob_threat = float(pipeline.predict_proba(df_features)[0][1])
-            verdict_label = int(prob_threat >= 0.5)
-            engine_source = f"Modelo ML Activo: {model_filename}"
-        except Exception:
-            prob_threat = 0.5
-            verdict_label = 0
-            engine_source = "Modo Heurístico"
-    else:
-        # Motor heurístico visual
-        score = 10
-        if not is_https: score += 25
-        if is_ip: score += 35
-        if url_len > 60: score += 15
-        if len(found_keywords) > 0: score += len(found_keywords) * 15
-        if df_features.get('special_char_count', [0])[0] > 8: score += 10
-        prob_threat = min(max(score / 100.0, 0.01), 0.99)
-        verdict_label = 1 if prob_threat >= 0.5 else 0
-        engine_source = "Motor Heurístico Educativo (Esperando modelo .pkl)"
+    def set_sample_url(target_url: str):
+        st.session_state["url_input"] = target_url
 
-    # Tarjeta de Veredicto Visual
-    if verdict_label == 1:
-        st.markdown(f"""
-        <div class="verdict-banner verdict-danger-bg">
-            <div class="verdict-header">
-                <div class="verdict-title verdict-danger-title">🚨 ALERTA CRÍTICA: Amenaza de Phishing Detectada</div>
-                <div class="verdict-pill verdict-danger-pill">{prob_threat * 100:.1f}% RIESGO</div>
-            </div>
-            <div class="verdict-desc">
-                El sistema detectó patrones léxicos y estructurales anómalos comúnmente utilizados en ataques de suplantación de identidad bancaria y robo de credenciales. Se recomienda <strong>NO acceder ni ingresar contraseñas</strong>.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown(f"""
-        <div class="verdict-banner verdict-safe-bg">
-            <div class="verdict-header">
-                <div class="verdict-title verdict-safe-title">✅ SITIO VERIFICADO: Estructura Benigna</div>
-                <div class="verdict-pill verdict-safe-pill">{(1 - prob_threat) * 100:.1f}% SEGURO</div>
-            </div>
-            <div class="verdict-desc">
-                La URL analizada cumple con los estándares morfológicos de un dominio legítimo y seguro. No se encontraron anomalías maliciosas en su composición.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    col_l, col_r = st.columns([1.1, 1], gap="large")
 
-    # Indicadores Clave HUD
-    st.markdown("### 📡 Telemetría y Factores de Riesgo en Tiempo Real")
-    st.markdown(f"""
-    <div class="hud-grid">
-        <div class="hud-card">
-            <div class="hud-val" style="color: {'#10b981' if is_https else '#ef4444'};">
-                {'🔒 HTTPS' if is_https else '🔓 HTTP Inseguro'}
+    with col_l:
+        md("""
+        <div class="hero-h1">Herramienta gratuita de detección de phishing: analiza la seguridad de cualquier URL</div>
+        <div class="hero-lbl">Introduce la URL que quieres analizar</div>
+        """)
+        
+        user_url = st.text_input(
+            "URL a analizar",
+            key="url_input",
+            placeholder="https://ejemplo.com/...",
+            label_visibility="collapsed"
+        )
+        
+        st.button("Obtener detalles de URL", key="btn_run", type="primary", use_container_width=True)
+
+        md('<div class="try-lbl">Prueba con un ejemplo de un clic:</div>')
+        examples = [
+            ("🚨 Phishing banco", EJ_PHISH),
+            ("🚨 IP sospechosa", "http://192.168.1.105/paypal/signin/verification.php"),
+            ("✅ Google", "https://www.google.com/search?q=phishing+detection"),
+            ("✅ GitHub", "https://github.com/alex171215/Detector-Phishing-ML"),
+        ]
+        
+        for col, (label, url) in zip(st.columns(4), examples):
+            with col:
+                st.button(
+                    label,
+                    key=f"ex_{label}",
+                    on_click=set_sample_url,
+                    args=(url,),
+                    use_container_width=True
+                )
+
+    # ---------------- Lógica de Inferencia ----------------
+    raw_url = (user_url or "").strip()
+    with col_r:
+        if not raw_url:
+            md('<div class="res-empty">Introduce una dirección URL para ver el análisis de seguridad en tiempo real.</div>')
+        else:
+            norm_url = raw_url if "://" in raw_url else "http://" + raw_url
+            parsed = urllib.parse.urlparse(norm_url)
+            has_https = parsed.scheme.lower() == "https"
+            host = parsed.hostname or ""
+            is_ip = bool(re.match(r"^[0-9]+(?:\.[0-9]+){3}$", host))
+            url_len = len(norm_url)
+            n_special = sum(not c.isalnum() for c in norm_url)
+            kws = [w for w in SUSPICIOUS if w in norm_url.lower()]
+
+            prob, motor, debug_error = None, None, None
+            
+            # Intento de inferencia con el Pipeline entrenado
+            if pipeline_ml is not None:
+                try:
+                    df = extract_features_from_url(norm_url)
+                    prob = float(pipeline_ml.predict_proba(df)[0][1])
+                    motor = f"Scikit-Learn ({pipeline_path})"
+                except Exception as ex:
+                    prob = None
+                    debug_error = str(ex)
+
+            # Respaldo heurístico
+            if prob is None:
+                prob = heuristic_prob(has_https, is_ip, url_len, len(kws), n_special)
+                motor = "Heurístico léxico" + (" (error al predecir .pkl)" if pipeline_ml is not None else " (esperando .pkl)")
+
+            threat = prob >= 0.5
+            cls = "bad" if threat else "ok"
+            title = "Phishing / Sospechosa" if threat else "Segura / Legítima"
+            conf = f"{prob*100:.1f}% de riesgo" if threat else f"{(1-prob)*100:.1f}% de seguridad"
+            color = "var(--bad)" if threat else "var(--ok)"
+            kw_txt = htmllib.escape(", ".join(kws)) if kws else "Ninguna detectada"
+
+            md(f"""
+            <div class="res-card">
+              <div class="res-banner {cls}">
+                <div class="ic">{'⚠️' if threat else '✅'}</div>
+                <div><div class="t">{title}</div><div class="s">{conf}</div></div>
+              </div>
+              <div class="meter"><div style="width:{prob*100:.0f}%;background:{color};"></div></div>
+              <div class="res-grid">
+                <div><div class="f-lbl">Dominio / Host</div><div class="f-val">{htmllib.escape(host) or 'No especificado'}</div></div>
+                <div><div class="f-lbl">Protocolo Web</div>
+                  <div class="f-val {'ok' if has_https else 'bad'}">{'HTTPS (cifrado)' if has_https else 'HTTP (inseguro)'}</div></div>
+                <div><div class="f-lbl">Tipo de Dirección</div>
+                  <div class="f-val {'bad' if is_ip else ''}">{'Dirección IP directa' if is_ip else 'Nombre de dominio (DNS)'}</div></div>
+                <div><div class="f-lbl">Longitud de URL</div><div class="f-val">{url_len} caracteres</div></div>
+                <div><div class="f-lbl">Palabras Sensibles</div><div class="f-val">{kw_txt}</div></div>
+                <div><div class="f-lbl">Motor de IA</div><div class="f-val blue">{htmllib.escape(motor)}</div></div>
+              </div>
             </div>
-            <div class="hud-title">Protocolo Cifrado</div>
-        </div>
-        <div class="hud-card">
-            <div class="hud-val" style="color: {'#ef4444' if is_ip else '#38bdf8'};">
-                {'⚠️ Dirección IP' if is_ip else '🌐 Dominio DNS'}
-            </div>
-            <div class="hud-title">Resolución de Host</div>
-        </div>
-        <div class="hud-card">
-            <div class="hud-val" style="color: {'#ef4444' if url_len > 70 else '#38bdf8'};">
-                {url_len} Caracteres
-            </div>
-            <div class="hud-title">Longitud Total</div>
-        </div>
-        <div class="hud-card">
-            <div class="hud-val" style="color: {'#ef4444' if len(found_keywords) > 0 else '#10b981'};">
-                {len(found_keywords)} Sensibles
-            </div>
-            <div class="hud-title">Palabras Clave</div>
-        </div>
+            """)
+
+            if debug_error:
+                st.caption(f"ℹ️ Detalle para desarrolladores: el archivo `{pipeline_path}` arrojó: {debug_error}. Revisa que extractor.py devuelva las mismas columnas del entrenamiento.")
+
+    # ---------------- Contenido Informativo (NordVPN Style) ----------------
+    md("""
+    <div class="toc">
+      <a href="#que-es" target="_self">Herramienta de análisis</a>
+      <a href="#que-revela" target="_self">¿Qué revela el análisis?</a>
+      <a href="#que-no" target="_self">¿Qué no puede revelar?</a>
+      <a href="#pasos" target="_self">Cómo usarla</a>
+      <a href="#faq" target="_self">Preguntas frecuentes</a>
     </div>
-    """, unsafe_allow_html=True)
-
-    # Tabla de métricas
-    with st.expander("🔬 Ver Vector Completo de Características Léxicas"):
-        st.caption(f"Salida entregada por `extractor.py` hacia el Pipeline ({engine_source}):")
-        st.dataframe(df_features, use_container_width=True)
-
-# ==============================================================================
-# 💎 PILARES Y CARACTERÍSTICAS DEL SISTEMA
-# ==============================================================================
-st.markdown("---")
-st.markdown("### ⚡ Arquitectura y Módulos de Protección")
-
-st.markdown("""
-<div class="features-grid">
-    <div class="feature-card">
-        <div class="feature-icon">🧠</div>
-        <div class="feature-title">Modelado Predictivo Dual</div>
-        <div class="feature-desc">
-            Evaluación comparativa entre Regresión Logística y Bosques Aleatorios calibrados con ponderación de clases (class_weight='balanced') para tráfico desbalanceado.
-        </div>
+    <div class="sec" id="que-es"><h2>¿Qué es la herramienta de análisis de URL?</h2>
+      <p>PhishGuard es un servicio académico gratuito que estima si un enlace presenta características de phishing. Extrae variables léxicas y morfológicas de la URL (longitud, protocolo, tipo de dirección, caracteres especiales y palabras sensibles) y las evalúa con algoritmos de Machine Learning entrenados con más de 116,600 registros.</p></div>
+    <div class="sec" id="que-revela"><h2>¿Qué información revela el análisis?</h2>
+      <table class="tbl">
+        <tr><td>Nivel de riesgo</td><td>Una probabilidad continua de phishing entre 0% y 100% calculada por el modelo predictivo.</td></tr>
+        <tr><td>Estructura de la URL</td><td>Host o IP, protocolo (HTTP/HTTPS), longitud de caracteres y presencia de caracteres no alfanuméricos.</td></tr>
+        <tr><td>Palabras sensibles</td><td>Detección de términos comúnmente utilizados en suplantaciones bancarias (login, verify, secure, banco, etc.).</td></tr>
+      </table></div>
+    <div class="sec" id="que-no"><h2>¿Qué no puede revelar?</h2>
+      <table class="tbl">
+        <tr><td>El contenido interno de la página</td><td>El análisis es morfológico-léxico: no ejecuta JavaScript ni rastrea formularios ocultos dentro del sitio web.</td></tr>
+        <tr><td>Identidad del remitente</td><td>No determina la identidad legal de quien envió el correo o mensaje con el enlace.</td></tr>
+        <tr><td>Certeza absoluta del 100%</td><td>Se trata de inferencias probabilísticas basadas en datos estadísticos; siempre se recomienda precaución perimetral.</td></tr>
+      </table></div>
+    <div class="cta">
+      <div><h3>¿Un enlace te parece sospechoso?</h3><p>Conoce las medidas inmediatas antes de abrir enlaces y cómo protegerte si ya ingresaste credenciales.</p></div>
+      <a class="pg-btn" href="?page=ayuda" target="_self">Ver guía de seguridad</a>
     </div>
-    <div class="feature-card">
-        <div class="feature-icon">🧬</div>
-        <div class="feature-title">Extracción Léxica Viva</div>
-        <div class="feature-desc">
-            Descomposición milimétrica de URLs: ratios numéricos, entropía léxica, detección de subdominios multinivel y detección de hosts IP directos.
-        </div>
+    <div class="sec" id="pasos"><h2>Analiza una URL en tres pasos</h2>
+      <div class="steps">
+        <div class="step"><div class="n">1</div><h4>Copia el enlace</h4><p>No hagas clic directamente. Copia la dirección desde el correo o mensaje.</p></div>
+        <div class="step"><div class="n">2</div><h4>Pégalo en el buscador</h4><p>Introdúcelo en el campo superior y pulsa «Obtener detalles de URL».</p></div>
+        <div class="step"><div class="n">3</div><h4>Evalúa el veredicto</h4><p>Revisa la probabilidad de amenaza y los factores de riesgo detectados.</p></div>
+      </div></div>
+    <div class="sec" id="faq"><h2>Preguntas frecuentes</h2>
+      <details class="faq"><summary>¿Cómo funciona el detector?</summary><p>Convierte la URL en métricas numéricas estructuradas y las envía al Pipeline entrenado con Scikit-Learn, el cual calcula la probabilidad de pertenecer a la clase phishing mediante <code>.predict_proba()</code>.</p></details>
+      <details class="faq"><summary>¿Se guardan las URLs analizadas?</summary><p>No. Las cadenas de texto se evalúan de forma efímera en la memoria RAM del servidor de inferencia sin almacenarse en bases de datos externas.</p></details>
+      <details class="faq"><summary>¿Por qué una URL con HTTPS puede ser phishing?</summary><p>HTTPS únicamente garantiza que la conexión entre tu dispositivo y el servidor esté cifrada; no garantiza que el dueño del servidor sea una entidad legítima. Muchos ciberdelincuentes instalan certificados SSL gratuitos.</p></details>
     </div>
-    <div class="feature-card">
-        <div class="feature-icon">🛡️</div>
-        <div class="feature-title">Arquitectura Zero-Leakage</div>
-        <div class="feature-desc">
-            Pipelines estandarizados con ColumnTransformer y StandardScaler para garantizar que cada predicción replique con exactitud las transformaciones del entrenamiento.
-        </div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# ==============================================================================
-# ⚖️ TÉRMINOS, POLÍTICAS Y PRIVACIDAD
-# ==============================================================================
-with st.expander("⚖️ Términos de Uso, Política de Cookies y Aviso de Ciberseguridad"):
-    st.markdown("""
-    * **Cookies y Sesión:** La aplicación opera únicamente con variables de sesión volátiles para mantener la interactividad temporal de la URL analizada. No se recopilan cookies de rastreo ni telemetría publicitaria.
-    * **Privacidad de Enlaces:** Las URLs examinadas se procesan en la memoria RAM del servidor de inferencia y no son persistidas en bases de datos externas.
-    * **Descargo Académico y Legal:** Herramienta desarrollada con fines académicos e investigativos. Las clasificaciones son de carácter probabilístico.
     """)
 
 # ==============================================================================
-# 👤 PIE DE PÁGINA Y AUTORES
+# 📄 PÁGINA 2: MODELOS IA
 # ==============================================================================
-st.markdown("""
-<div class="site-footer">
-    <div style="font-size: 1.1rem; font-weight: 700; color: #ffffff; margin-bottom: 6px;">
-        PhishGuard AI — Sistema de Detección de Phishing con Machine Learning
+elif current_page == "modelos":
+    md("""
+    <div class="pg-title">Modelos de Inteligencia Artificial</div>
+    <div class="pg-sub">Fundamentación técnica, formulación y comparación de algoritmos entrenados para la clasificación de phishing sobre más de 116,600 muestras.</div>
+    <div class="g2">
+      <div class="card"><h3>1. Regresión Logística (Modelo Lineal)</h3><ul>
+        <li><strong>Tipo:</strong> Clasificador probabilístico lineal fundamentado en la función sigmoide.</li>
+        <li><strong>Estimación de Certeza:</strong> Genera probabilidades continuas de 0% a 100% mediante <code>.predict_proba()</code>.</li>
+        <li><strong>Interpretabilidad:</strong> Permite conocer la influencia directa de cada variable predictora mediante sus coeficientes y odds-ratios.</li>
+        <li><strong>Tratamiento del Desbalance:</strong> Ajustado con <code>class_weight='balanced'</code> para penalizar los falsos negativos de phishing (14% de la muestra total).</li></ul></div>
+      <div class="card"><h3>2. Bosques Aleatorios / Árboles de Decisión</h3><ul>
+        <li><strong>Tipo:</strong> Modelo de ensamble no lineal basado en árboles y particiones ortogonales jerárquicas.</li>
+        <li><strong>Interacciones Complejas:</strong> Detecta combinaciones sospechosas (ej. ausencia de HTTPS + dominio IP + longitud superior a 75 caracteres).</li>
+        <li><strong>Importancia de Variables:</strong> Pondera la capacidad de discriminación de cada métrica mediante la reducción de impureza de Gini.</li>
+        <li><strong>Evaluación Comparativa:</strong> Comparación rigurosa de Curvas ROC, AUC, Precision y Recall frente a la Regresión Logística.</li></ul></div>
     </div>
-    <div style="color: #94a3b8; font-size: 0.9rem;">
-        Proyecto de Inteligencia Artificial • Semestre 6
+    """)
+
+# ==============================================================================
+# 📄 PÁGINA 3: AYUDA Y CONSEJOS
+# ==============================================================================
+else:
+    md("""
+    <div class="pg-title">Guía de ciberseguridad y consejos preventivos</div>
+    <div class="pg-sub">Instrucciones recomendadas ante enlaces sospechosos y protocolo de mitigación ante filtración de datos.</div>
+    <div class="g2">
+      <div class="card alert"><h3>🚨 Si el detector clasifica una URL como phishing:</h3><ul>
+        <li><strong>No accedas ni ingreses información:</strong> Jamás digites contraseñas, cédulas, números de tarjeta ni códigos temporales SMS/OTP.</li>
+        <li><strong>Verifica el canal de procedencia:</strong> Inspecciona la dirección de correo o teléfono emisor para identificar irregularidades.</li>
+        <li><strong>Usa el canal oficial legítimo:</strong> Abre una nueva pestaña en tu navegador y escribe tú mismo la dirección oficial de tu banco o plataforma.</li>
+        <li><strong>Reporta el intento de fraude:</strong> Notifica al departamento de soporte de la institución suplantada o repórtalo en tu cliente de correo.</li></ul></div>
+      <div class="card"><h3>🔑 ¿Ingresaste credenciales o datos bancarios por error?</h3><ol>
+        <li><strong>Cambia tu contraseña de inmediato</strong> desde el portal oficial por una combinación robusta y no repetida.</li>
+        <li><strong>Activa la autenticación en dos pasos (2FA/MFA)</strong> mediante aplicaciones autenticadoras o llaves físicas.</li>
+        <li><strong>Comunícate con tu institución bancaria</strong> para solicitar el bloqueo preventivo de tarjetas o transferencias.</li>
+        <li><strong>Cierra sesiones activas</strong> desde el panel de seguridad de tu cuenta en todos los dispositivos.</li></ol></div>
     </div>
-    <div class="authors-chips">
-        <div class="author-chip">👨‍💻 Alejandro Flores</div>
-        <div class="author-chip">👨‍💻 Paul Rosero</div>
-        <div class="author-chip">👩‍💻 Gloria Chassi</div>
+    """)
+
+# ==============================================================================
+# 🔻 PIE DE PÁGINA (ESTÁNDAR NORDVPN EN 3 COLUMNAS)
+# ==============================================================================
+md("""
+<footer class="foot">
+  <div class="foot-in">
+    <div>
+      <div class="brand">PhishGuard AI</div>
+      <p>Sistema de detección de phishing en URLs con Machine Learning. Proyecto académico de Semestre 6.</p>
     </div>
-    <div style="color: #64748b; font-size: 0.8rem; margin-top: 15px;">
-        © 2026 Todos los derechos reservados. Desarrollado con Streamlit & Scikit-Learn.
+    <div>
+      <h5>Autores del Proyecto</h5>
+      <ul>
+        <li>👨‍💻 Alejandro Flores</li>
+        <li>👨‍💻 Paul Rosero</li>
+        <li>👩‍💻 Gloria Chassi</li>
+      </ul>
     </div>
-</div>
-""", unsafe_allow_html=True)
+    <div>
+      <h5>Términos, cookies y privacidad</h5>
+      <ul>
+        <li><strong>Aviso de cookies:</strong> Se emplean únicamente variables de sesión volátiles para mantener el estado temporal; sin rastreo ni telemetría comercial.</li>
+        <li><strong>Tratamiento de datos:</strong> Las URLs son examinadas en tiempo real en la memoria RAM del servidor de inferencia sin almacenamiento persistente.</li>
+        <li><strong>Descargo de responsabilidad:</strong> Prototipo académico de investigación. Las clasificaciones son inferencias probabilísticas y no sustituyen soluciones perimetrales empresariales.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    © 2026 PhishGuard AI. Todos los derechos reservados.
+  </div>
+</footer>
+""")
