@@ -1,59 +1,68 @@
 # 🛡️ Detector de Phishing en URLs con Machine Learning
 
-Sistema de detección y clasificación de URLs maliciosas (*Phishing*) utilizando técnicas avanzadas de **Machine Learning** y procesamiento léxico de URLs, desplegado a través de una aplicación web interactiva desarrollada con **Streamlit**.
+Sistema integral de detección, análisis de amenazas y clasificación de URLs maliciosas (*Phishing*) mediante técnicas avanzadas de **Machine Learning** y procesamiento léxico en tiempo real, desplegado a través de una aplicación web interactiva desarrollada con **Streamlit**.
+
+---
+
+## 👥 Equipo y Autores
+* **Alejandro Flores**
+* **Paul Rosero**
+* **Gloria Chassi**
+
+*Proyecto académico de Inteligencia Artificial (Semestre 6) — Clasificación Supervisada y Ciberseguridad.*
 
 ---
 
 ## 📌 Contexto del Problema y Justificación
 
-El **phishing** es uno de los vectores de ataque más comunes y peligrosos en ciberseguridad. Consiste en engañar a los usuarios mediante enlaces fraudulentos que imitan sitios legítimos (bancos, redes sociales, servicios en la nube) para sustraer credenciales o infectar dispositivos.
+El **phishing** es uno de los vectores de ataque más comunes y peligrosos en el ecosistema digital. Consiste en engañar a los usuarios mediante enlaces fraudulentos que imitan plataformas legítimas (entidades bancarias, pasarelas de pago, servicios de correo o redes sociales) para robar credenciales y datos confidenciales.
 
 ### ¿Qué predice este sistema?
-Dada una URL introducida por el usuario o interceptada en tiempo real, el sistema predice probabilísticamente:
-* **Clase 0 (Benigna):** La URL corresponde a un sitio legítimo y seguro.
-* **Clase 1 (Phishing):** La URL exhibe patrones maliciosos característicos de sitios fraudulentos.
+A partir de una URL suministrada en la aplicación web, el sistema extrae automáticamente sus características morfológicas y calcula probabilísticamente:
+* **Clase 0 (Benigna / Legítima):** La dirección web presenta patrones estructurales seguros.
+* **Clase 1 (Phishing / Maliciosa):** La URL posee anomalías léxicas típicas de páginas de suplantación de identidad.
 
 ---
 
-## 🧠 Arquitectura de Modelos de Machine Learning
+## 🧠 Modelos de Machine Learning e Interpretación
 
-El proyecto contempla el entrenamiento, evaluación rigurosa y comparación de dos enfoques de clasificación binaria:
+El proyecto implementa y compara dos enfoques de clasificación binaria:
 
 ### 1. Regresión Logística (`LogisticRegression`)
 * **Naturaleza:** Modelo lineal probabilístico.
-* **Ventajas:** Alta interpretabilidad mediante coeficientes, cálculo nativo de probabilidades calibradas con la función sigmoide (`.predict_proba()`), y excelente velocidad de inferencia en tiempo real.
-* **Ajuste:** Optimización con `class_weight='balanced'` y solucionador `lbfgs` para compensar el desbalance natural de clases.
+* **Ventajas:** Alta interpretabilidad matemática a través de coeficientes y odds-ratio, inferencia ultrarrápida y calibración de probabilidades con la función sigmoide (`.predict_proba()`).
+* **Ajuste:** Optimización con `class_weight='balanced'` y algoritmo optimizador `lbfgs` para compensar el desbalance natural de las muestras.
 
-### 2. Árboles de Decisión / Bosques Aleatorios (`DecisionTree` / `RandomForest`)
-* **Naturaleza:** Modelos no lineales basados en particiones jerárquicas y ensamblado de árboles.
-* **Ventajas:** Capacidad de capturar interacciones complejas y no lineales entre características estructurales (ej. longitud extrema combinada con ausencia de HTTPS y presencia de caracteres sospechosos).
-* **Interpretación:** Importancia de características (*Feature Importance*) según impureza de Gini.
+### 2. Árboles de Decisión / Random Forest (`DecisionTreeClassifier` / `RandomForestClassifier`)
+* **Naturaleza:** Modelos no lineales basados en divisiones ortogonales y ensamblado de árboles.
+* **Ventajas:** Captura relaciones no lineales e interacciones complejas entre variables (ej. combinación de protocolo inseguro, dominio basado en IP numérica y longitud excesiva).
+* **Interpretación:** Importancia relativa de características (*Feature Importance*) según reducción de impureza de Gini.
 
 ---
 
 ## 📊 Métricas de Evaluación para Clases Desbalanceadas
 
-En la web real, el tráfico legítimo supera ampliamente al malicioso (~85.8% benignas vs. ~14.2% phishing). Por ello, la métrica de **Exactitud (*Accuracy*) es engañosa**. El sistema se evalúa mediante:
+En entornos reales, el tráfico legítimo supera ampliamente al fraudulento (~85.8% benignas vs. ~14.2% phishing). Debido a este desbalance, la métrica de **Exactitud (*Accuracy*) es insuficiente**. El rendimiento se evalúa con:
 
 * **Matriz de Confusión:**
-  * **Verdaderos Positivos (VP):** Phishing detectado correctamente.
-  * **Falsos Positivos (FP):** Falsa alarma (sitio seguro bloqueado).
+  * **Verdaderos Positivos (VP):** Phishing detectado oportunamente.
+  * **Falsos Positivos (FP):** Falsa alarma (sitio legítimo marcado como peligroso).
   * **Falsos Negativos (FN):** Amenaza no detectada (riesgo crítico de seguridad).
-* **Recall (Sensibilidad en Clase 1):** Prioridad en ciberseguridad para minimizar los falsos negativos.
-* **Precision (Precisión en Clase 1):** Garantiza que no se bloqueen sitios web legítimos sin justificación.
-* **F1-Score:** Media armónica entre Precision y Recall.
-* **Curva ROC y AUC (Área Bajo la Curva):** Capacidad del modelo de discriminar entre ambas clases ante distintos umbrales de decisión.
+* **Recall (Sensibilidad en Clase 1):** Métrica prioritaria para minimizar los falsos negativos.
+* **Precision (Precisión en Clase 1):** Asegura no bloquear sitios legítimos innecesariamente.
+* **F1-Score:** Balance armónico entre Precision y Recall.
+* **Curva ROC y AUC (Área Bajo la Curva):** Mide la capacidad de separación de clases ante diferentes umbrales de decisión.
 
 ---
 
-## 🌐 ¿Por qué una Aplicación Web en Streamlit (Python) y no solo HTML estático?
+## 🌐 Aplicación Web Interactiva ([`app.py`](app.py))
 
-Un archivo HTML estático por sí solo en el navegador no puede ejecutar modelos de Scikit-Learn empaquetados en formato binario (`.pkl`) ni procesar la extracción de características de Python.
-
-Se utiliza **Streamlit** porque:
-1. **Backend y Frontend en Python unificados:** Carga en memoria el pipeline serializado (`joblib`) y procesa solicitudes instantáneamente.
-2. **Extracción Léxica en Vivo:** Cuando el usuario pega una URL, [`extractor.py`](extractor.py) descompone la URL en tiempo real y la entrega al pipeline con las transformaciones exactas (`StandardScaler`, `ColumnTransformer`).
-3. **Semáforo y Diagnóstico Visual:** Muestra la probabilidad porcentual calculada y desglosa qué elementos hicieron sospechosa la URL (longitud, uso de IP en lugar de dominio, caracteres especiales, protocolo inseguro, etc.).
+La aplicación fue construida con **Streamlit** e incorpora:
+1. **Interfaz Visual de Ciberseguridad:** Tema oscuro con tarjetas de veredicto dinámicas (🟢 Seguro vs 🔴 Phishing) y barra medidora de riesgo.
+2. **Botones de Prueba Rápida con 1 Clic:** Acceso directo a ejemplos de phishing bancario, phishing con IP directa y dominios seguros (Google, GitHub).
+3. **Desglose de Señales y Factores de Riesgo:** Indicadores en tiempo real sobre el protocolo (HTTPS vs HTTP), tipo de host (DNS vs IP numérica), longitud de URL y palabras clave sensibles detectadas.
+4. **Marco Legal y Privacidad:** Panel con aviso de cookies técnicas de sesión, tratamiento seguro de URLs (procesamiento volátil en memoria) y recomendaciones de seguridad.
+5. **Modo Híbrido (Modelo Real + Motor Heurístico de Respaldo):** Si el archivo `.pkl` aún no ha sido generado, la app activa un motor de inferencia heurístico educativo para garantizar interactividad continua.
 
 ---
 
@@ -62,21 +71,21 @@ Se utiliza **Streamlit** porque:
 ```text
 Detector-Phishing-ML/
 │
-├── README.md                      # Documentación principal y contextualización
-├── Plan de acción.md             # Rúbrica y fases metodológicas del proyecto
-├── requirements.txt               # Dependencias del entorno de desarrollo
+├── README.md                      # Documentación completa y arquitectura del proyecto
+├── Plan de acción.md             # Rúbrica oficial y fases metodológicas
+├── requirements.txt               # Lista de librerías y dependencias
 │
-├── notebook_phishing.ipynb        # EDA, ingeniería de características, entrenamiento y comparación de modelos
-├── extractor.py                   # Módulo de extracción de características léxicas de URLs
+├── notebook_phishing.ipynb        # Cuaderno Jupyter: EDA, preprocesamiento, modelado y métricas
+├── extractor.py                   # Script de extracción de métricas léxicas desde URLs
 ├── app.py                         # Aplicación web interactiva (Streamlit)
 │
-├── modelo_phishing.pkl            # Pipeline del modelo ganador serializado con joblib (generado tras entrenar)
+├── modelo_phishing.pkl            # Pipeline ganador serializado con joblib (generado al entrenar)
 └── Taller_Regresion_Logistica.html# Guía de referencia teórica
 ```
 
 ---
 
-## 🚀 Instalación y Uso
+## 🚀 Instalación y Ejecución Local
 
 ### 1. Clonar el repositorio
 ```bash
@@ -84,34 +93,32 @@ git clone https://github.com/alex171215/Detector-Phishing-ML.git
 cd Detector-Phishing-ML
 ```
 
-### 2. Crear y activar un entorno virtual (Recomendado)
+### 2. Instalar dependencias
 ```bash
-# En Windows:
-python -m venv .venv
-.venv\Scripts\activate
-
-# En Linux/macOS:
-python3 -m venv .venv
-source .venv/bin/activate
+python -m pip install -r requirements.txt
 ```
+*(O directamente: `python -m pip install streamlit pandas scikit-learn matplotlib seaborn joblib`)*
 
-### 3. Instalar las dependencias
+### 3. Ejecutar la Aplicación Web
+Para ejecutar en Windows o cualquier sistema evitando problemas con el PATH del sistema:
 ```bash
-pip install -r requirements.txt
+python -m streamlit run app.py
 ```
-
-### 4. Entrenar y generar el modelo
-1. Descargar el archivo `Dataset.csv` y colocarlo en la raíz del proyecto.
-2. Abrir y ejecutar todas las celdas de [`notebook_phishing.ipynb`](notebook_phishing.ipynb).
-3. Se generará automáticamente el archivo `modelo_phishing.pkl`.
-
-### 5. Ejecutar la Aplicación Web
-```bash
-streamlit run app.py
-```
-La aplicación se abrirá automáticamente en tu navegador en `http://localhost:8501`.
+La aplicación se abrirá automáticamente en tu navegador en:
+👉 `http://localhost:8501`
 
 ---
 
-## 👥 Equipo y Autores
-Proyecto académico de Inteligencia Artificial - Clasificación Supervisada para Ciberseguridad.
+## ☁️ Despliegue en la Nube
+
+> [!NOTE]
+> Para el despliegue en producción se recomienda **Streamlit Community Cloud** ([share.streamlit.io](https://share.streamlit.io)) o **Hugging Face Spaces**, ya que mantienen procesos continuos de Python y WebSockets (a diferencia de plataformas serverless estáticas como Vercel).
+
+1. Conecta tu repositorio de GitHub en [Streamlit Cloud](https://share.streamlit.io).
+2. Selecciona la rama (`alejo` o `main`) y el archivo principal `app.py`.
+3. Haz clic en **Deploy**.
+
+---
+
+## ⚖️ Licencia y Responsabilidad
+Desarrollado con fines exclusivamente académicos y de investigación en seguridad informática. Las predicciones del modelo son de naturaleza probabilística y no reemplazan sistemas de seguridad perimetral de grado empresarial.
