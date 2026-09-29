@@ -1,0 +1,25 @@
+# Entorno virtual de Python
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Archivos de Colab / Jupyter
+.ipynb_checkpoints/
+
+# IDEs y editores
+.vscode/
+.idea/
+
+# Sistema operativo
+Thumbs.db
+.DS_Store
+
+# Dataset con URLs de Phishing (evita la detección de Push Protection de GitHub por URLs que parecen llaves AWS en el dataset)
+Dataset.csv
+111k-first-notebook.ipynb
+phishing-url-detection-using-rf-minilm-lr.ipynb
+phishusill-2-notebook.ipynb
+*.pdf
+
