@@ -7,7 +7,7 @@ Sistema integral de detección, análisis de amenazas y clasificación de URLs m
 ## 👥 Equipo y Autores
 * **Alejandro Flores**
 * **Paul Rosero**
-* **Gloria Chassi**
+* **Gloria CHUSHIG**
 
 *Proyecto académico de Inteligencia Artificial (Semestre 6) — Clasificación Supervisada y Ciberseguridad.*
 
