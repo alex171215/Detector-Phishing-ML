@@ -88,6 +88,6 @@ En el formulario de configuración, completa los campos con los siguientes valor
 ## 👥 Equipo
 * **Alejandro Flores**
 * **Paul Rosero**
-* **Gloria Chassi**
+* **Gloria Chushig**
 
 *Proyecto académico de Inteligencia Artificial - Semestre 6.*
