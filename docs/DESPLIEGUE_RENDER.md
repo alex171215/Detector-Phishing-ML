@@ -6,27 +6,16 @@ Este documento detalla el estado actual del proyecto, los pasos pendientes que d
 
 ## 📋 1. Estado Actual: ¿Qué está listo y qué falta?
 
-### ✅ Lo que ya está listo y probado:
-* **Aplicación Web ([`app.py`](app.py)):** Interfaz completa y responsiva inspirada en el diseño y paleta de NordVPN (azul `#4687ff`, blanco y azul noche `#010e32`), con encabezado fijo, navegación entre pestañas (*Analizar URL*, *Modelos IA*, *Ayuda y consejos*) y pie de página en 3 columnas con autores y avisos legales.
-* **Manejo de Errores y Modo Respaldo:** Si aún no existe el archivo `.pkl`, la aplicación funciona automáticamente con un motor heurístico léxico sin romperse.
-* **Detección Automática de Modelos:** `app.py` busca automáticamente cualquier archivo `.pkl` (`modelo_phishing.pkl`, `modelo_lr_phishing.pkl`, `modelo_rf_phishing.pkl`).
-* **Dependencias ([`requirements.txt`](requirements.txt)):** Todas las librerías necesarias ya están declaradas.
+### ✅ Lo que ya está listo
+* **Aplicación web (`app.py`):** interfaz completa. Toda la lógica de ML pasa por `src/predictor.py`.
+* **Carga automática de modelos:** la app usa los `.pkl` que existan en `models/` (`modelo_lr.pkl`, `modelo_rf.pkl`, `modelo_svm.pkl`). Si hay varios, muestra un selector; si no hay ninguno, funciona en modo heurístico.
+* **Dependencias (`requirements.txt`):** declaradas.
 
-### ⏳ Lo que falta por completar antes del despliegue final:
-1. **Descargar el Dataset:** Descargar `Dataset.csv` (desde Kaggle: *Phishing URL Detection, 111K/116K URLs, 22 Features*) y colocarlo en la raíz del proyecto.
-2. **Entrenar y Comparar Modelos en el Notebook:**
-   * Abrir [`notebook_phishing.ipynb`](notebook_phishing.ipynb).
-   * Ejecutar la **Regresión Logística**.
-   * Agregar y entrenar el segundo modelo (**Random Forest** o **Árbol de Decisión**).
-   * Comparar métricas (Precision, Recall, F1-Score, Curva ROC / AUC).
-3. **Exportar el Pipeline Ganador:**
-   * Guardar el modelo ganador con:
-     ```python
-     import joblib
-     joblib.dump(pipeline_ganador, 'modelo_phishing.pkl')
-     ```
-4. **Alinear [`extractor.py`](extractor.py):**
-   * Verificar que la función `extract_features_from_url(url)` devuelva exactamente los mismos nombres y tipos de columnas que las 22 variables con las que fue entrenado el pipeline en el notebook.
+### ⏳ Lo que falta antes del despliegue final
+1. Entrenar los modelos (`python -m scripts.entrenar todos` o los notebooks) y **subir a GitHub los `.pkl` de `models/`**.
+2. Validar el extractor: `python -m scripts.validar_extractor` debe salir todo en ✅.
+3. Fijar en `requirements.txt` la versión exacta de scikit-learn con la que se entrenó.
+4. Poner la clave del modelo ganador en `MODELO_POR_DEFECTO` (`src/config.py`).
 
 ---
 
@@ -88,6 +77,6 @@ En el formulario de configuración, completa los campos con los siguientes valor
 ## 👥 Equipo
 * **Alejandro Flores**
 * **Paul Rosero**
-* **Gloria Chassi**
+* **Gloria Chushig**
 
 *Proyecto académico de Inteligencia Artificial - Semestre 6.*
