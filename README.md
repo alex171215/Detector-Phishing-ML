@@ -1,124 +1,132 @@
-# 🛡️ Detector de Phishing en URLs con Machine Learning (PhishGuard)
+# 🛡️ PhishGuard: detector de phishing en URLs con Machine Learning
 
-Sistema integral de detección, análisis de amenazas y clasificación de URLs maliciosas (*Phishing*) mediante técnicas avanzadas de **Machine Learning** y procesamiento léxico en tiempo real, desplegado a través de una aplicación web interactiva desarrollada con **Streamlit** y diseñada con el sistema visual limpio de **NordVPN**.
+Sistema que clasifica URLs como **benignas (0)** o **phishing (1)** a partir de sus características léxicas y estructurales. Compara tres modelos de scikit-learn y despliega el ganador en una aplicación web con **Streamlit**.
 
----
+*Proyecto académico de Inteligencia Artificial (Semestre 6): clasificación supervisada y ciberseguridad.*
 
-## 👥 Equipo y Autores
-* **Alejandro Flores**
-* **Paul Rosero**
-* **Gloria CHUSHIG**
+## 👥 Equipo y reparto
 
-*Proyecto académico de Inteligencia Artificial (Semestre 6) — Clasificación Supervisada y Ciberseguridad.*
+| Integrante | Modelo | Archivo de lógica | Notebook |
+| --- | --- | --- | --- |
+| **Paul Rosero** | Regresión Logística | `src/models/logistic_regression.py` | `notebooks/02_regresion_logistica.ipynb` |
+| **Alejandro Flores** | Random Forest | `src/models/random_forest.py` | `notebooks/03_random_forest.ipynb` |
+| **Gloria Chushig** | SVM lineal | `src/models/linear_svm.py` | `notebooks/04_svm_lineal.ipynb` |
+| Todos | EDA, extractor y comparación | `src/extractor.py`, `src/config.py` | `01_…` y `05_…` |
 
----
-
-## 📌 Contexto del Problema y Justificación
-
-El **phishing** es uno de los vectores de ataque más comunes y peligrosos en el ecosistema digital. Consiste en engañar a los usuarios mediante enlaces fraudulentos que imitan plataformas legítimas (entidades bancarias, pasarelas de pago, servicios de correo o redes sociales) para sustraer credenciales y datos confidenciales.
-
-### ¿Qué predice este sistema?
-A partir de una URL suministrada en la aplicación web, el sistema extrae automáticamente sus características morfológicas y calcula probabilísticamente:
-* **Clase 0 (Benigna / Legítima):** La dirección web presenta patrones estructurales seguros.
-* **Clase 1 (Phishing / Maliciosa):** La URL posee anomalías léxicas típicas de páginas de suplantación de identidad.
-
----
-
-## 🧠 Modelos de Machine Learning e Interpretación
-
-El proyecto implementa y compara dos enfoques de clasificación binaria:
-
-### 1. Regresión Logística (`LogisticRegression`)
-* **Naturaleza:** Modelo lineal probabilístico.
-* **Ventajas:** Alta interpretabilidad matemática a través de coeficientes y odds-ratio, inferencia ultrarrápida y calibración de probabilidades continuas con la función sigmoide (`.predict_proba()`).
-* **Ajuste:** Optimización con `class_weight='balanced'` y algoritmo optimizador `lbfgs` para compensar el desbalance natural de las muestras.
-
-### 2. Árboles de Decisión / Random Forest (`DecisionTreeClassifier` / `RandomForestClassifier`)
-* **Naturaleza:** Modelos no lineales basados en divisiones ortogonales y ensamblado de árboles.
-* **Ventajas:** Captura relaciones no lineales e interacciones complejas entre variables (ej. combinación de protocolo inseguro, dominio basado en IP numérica y longitud excesiva).
-* **Interpretación:** Importancia relativa de características (*Feature Importance*) según reducción de impureza de Gini.
-
----
-
-## 📊 Métricas de Evaluación para Clases Desbalanceadas
-
-En entornos reales, el tráfico legítimo supera ampliamente al fraudulento (~85.8% benignas vs. ~14.2% phishing). Debido a este desbalance, la métrica de **Exactitud (*Accuracy*) es insuficiente**. El rendimiento se evalúa con:
-
-* **Matriz de Confusión:**
-  * **Verdaderos Positivos (VP):** Phishing detectado oportunamente.
-  * **Falsos Positivos (FP):** Falsa alarma (sitio legítimo marcado como peligroso).
-  * **Falsos Negativos (FN):** Amenaza no detectada (riesgo crítico de seguridad).
-* **Recall (Sensibilidad en Clase 1):** Métrica prioritaria para minimizar los falsos negativos.
-* **Precision (Precisión en Clase 1):** Asegura no bloquear sitios legítimos innecesariamente.
-* **F1-Score:** Balance armónico entre Precision y Recall.
-* **Curva ROC y AUC (Área Bajo la Curva):** Mide la capacidad de separación de clases ante diferentes umbrales de decisión.
-
----
-
-## 🌐 Aplicación Web Interactiva ([`app.py`](app.py))
-
-La aplicación fue construida con **Streamlit** y un sistema de diseño limpio basado en **NordVPN** (azul `#4687ff`, blanco y navy `#010e32`), incorporando:
-1. **Encabezado Fijo y Navegación Dinámica:** Menú integrado con navegación entre pantallas (*Analizar URL*, *Modelos IA*, *Ayuda y consejos*).
-2. **Consola de Búsqueda y Resultados en 2 Columnas:**
-   * Campo de entrada con botones de prueba rápida en un clic (Phishing bancario, IP sospechosa, Google seguro, GitHub).
-   * Tarjeta de diagnóstico de 6 métricas (Host, Protocolo HTTPS/HTTP, Tipo de dirección DNS vs IP, Longitud de enlace, Palabras sensibles y Motor activo).
-3. **Pie de Página en 3 Columnas:** Con créditos de los autores (**Alejandro Flores**, **Paul Rosero**, **Gloria Chassi**), aviso de cookies técnicas y descargo de responsabilidad.
-4. **Detección Automática de Modelos:** Búsqueda y carga automática de `modelo_phishing.pkl` o `modelo_lr_phishing.pkl`, con motor heurístico léxico de respaldo.
-
----
-
-## 📁 Estructura del Repositorio
+## 📁 Estructura
 
 ```text
-Detector-Phishing-ML/
+ProyectoRDA1/
+├── app.py                      # Interfaz web (Streamlit). Sin lógica de ML.
+├── requirements.txt
+├── README.md
 │
-├── README.md                      # Documentación completa y arquitectura del proyecto
-├── DESPLIEGUE_RENDER.md          # Guía detallada para poner en producción en Render.com
-├── Plan de acción.md             # Rúbrica oficial y fases metodológicas
-├── requirements.txt               # Lista de librerías y dependencias
+├── data/
+│   └── Dataset.csv             # ← descargar de Kaggle (no se sube a GitHub)
 │
-├── notebook_phishing.ipynb        # Cuaderno Jupyter: EDA, preprocesamiento, modelado y métricas
-├── extractor.py                   # Script de extracción de métricas léxicas desde URLs
-├── app.py                         # Aplicación web interactiva (Streamlit)
+├── models/                     # Modelos exportados (los genera el entrenamiento)
+│   ├── modelo_lr.pkl
+│   ├── modelo_rf.pkl
+│   ├── modelo_svm.pkl
+│   └── metricas.json           # métricas de prueba (las muestra la app)
 │
-├── modelo_phishing.pkl            # Pipeline ganador serializado con joblib (generado al entrenar)
-└── Taller_Regresion_Logistica.html# Guía de referencia teórica
+├── notebooks/
+│   ├── 01_eda_preprocesamiento.ipynb   # común: EDA, 3 gráficos, división
+│   ├── 02_regresion_logistica.ipynb    # Paul
+│   ├── 03_random_forest.ipynb          # Alejandro
+│   ├── 04_svm_lineal.ipynb             # Gloria
+│   └── 05_comparacion_modelos.ipynb    # tabla, ROC superpuestas, ganador
+│
+├── src/                        # Código común (lo importan notebooks, scripts y app)
+│   ├── config.py               # rutas, columnas, FEATURES, semilla, umbral
+│   ├── data.py                 # carga, limpieza y división estratificada 80/20
+│   ├── preprocessing.py        # ColumnTransformer (StandardScaler / passthrough)
+│   ├── extractor.py            # URL → variables (mismas columnas que el dataset)
+│   ├── evaluation.py           # métricas, matriz de confusión, curvas ROC
+│   ├── training.py             # entrenar_y_evaluar() y exportar_final()
+│   ├── predictor.py            # interfaz única que usa la app
+│   └── models/
+│       ├── __init__.py         # registro de modelos y armado del Pipeline
+│       ├── logistic_regression.py
+│       ├── random_forest.py
+│       └── linear_svm.py
+│
+├── scripts/
+│   ├── entrenar.py             # python -m scripts.entrenar rf
+│   └── validar_extractor.py    # python -m scripts.validar_extractor
+│
+└── docs/
+    ├── Plan de acción.md
+    ├── DESPLIEGUE_RENDER.md
+    └── Taller_Regresion_Logistica.html
 ```
 
----
+## 🔌 Cómo encaja todo
 
-## 🚀 Instalación y Ejecución Local
+```text
+Dataset.csv ─► data.py ─► preprocessing.py + models/<tu_modelo>.py ─► Pipeline
+                                                                      │
+                               evaluation.py ◄─ training.py ──────────┤
+                                                                      ▼
+                                                           models/modelo_xx.pkl
+                                                                      │
+   URL del usuario ─► app.py ─► predictor.py ─► extractor.py ─────────┘
+```
 
-### 1. Clonar el repositorio
+Cada integrante **solo programa `construir_clasificador()`** en su archivo de `src/models/`. Esa función devuelve el estimador de scikit-learn sin entrenar. El código común ya resuelve lo demás: preprocesamiento, Pipeline, partición, métricas, gráficos, exportación del `.pkl`, la tabla de la app y la conexión con la interfaz.
+
+## ✅ Pendientes
+
+1. **Todos:** poner `Dataset.csv` en `data/` y correr el notebook `01`.
+2. **Todos (antes de entrenar):** revisar `df.columns` y llenar en `src/config.py` las listas `FEATURES` y `COLUMNAS_EXCLUIDAS`. Después, completar `src/extractor.py` hasta que `python -m scripts.validar_extractor` salga todo en ✅.
+3. **Paul:** revisar `logistic_regression.py` (ya trae la configuración original) y completar el notebook `02`.
+4. **Alejandro:** implementar `random_forest.py` y completar el notebook `03`.
+5. **Gloria:** implementar `linear_svm.py` y completar el notebook `04`.
+6. **Todos:** notebook `05`, elegir el ganador y poner su clave en `config.MODELO_POR_DEFECTO`.
+7. Completar las interpretaciones (`TODO`) en los notebooks, el gráfico 3 del EDA, el informe PDF y la demo.
+
+Pueden buscar todo lo pendiente con: `grep -rn "TODO" src notebooks`.
+
+## 🚀 Instalación y ejecución
+
 ```bash
 git clone https://github.com/alex171215/Detector-Phishing-ML.git
 cd Detector-Phishing-ML
-```
-
-### 2. Instalar dependencias
-```bash
 python -m pip install -r requirements.txt
 ```
 
-### 3. Ejecutar la Aplicación Web
+Entrenar (desde la raíz del proyecto):
+
 ```bash
-python -m streamlit run app.py
+python -m scripts.entrenar lr       # o rf, svm, todos
 ```
-La aplicación se abrirá automáticamente en tu navegador en:
-👉 `http://localhost:8501`
 
----
+Abrir la aplicación:
 
-## ☁️ Despliegue en Producción (Render.com)
+```bash
+python -m streamlit run app.py      # http://localhost:8501
+```
 
-Para poner la aplicación en línea gratis con certificado HTTPS automático:
-* Consulta la **[Guía de Despliegue en Render (DESPLIEGUE_RENDER.md)](DESPLIEGUE_RENDER.md)** para el paso a paso detallado.
-* **Comando de inicio en Render:**
-  ```bash
-  streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
-  ```
+La app carga sola los `.pkl` que existan en `models/`. Si hay más de uno, muestra un selector de modelo. Si no hay ninguno, funciona en **modo heurístico** para que nunca se caiga.
 
----
+## 📊 Métricas
 
-## ⚖️ Licencia y Responsabilidad
-Desarrollado con fines exclusivamente académicos y de investigación en seguridad informática. Las predicciones del modelo son de naturaleza probabilística y no reemplazan sistemas de seguridad perimetral de grado empresarial.
+El dataset está desbalanceado (~85.8% benignas y ~14.2% phishing), así que el *Accuracy* por sí solo no basta. Los tres modelos se evalúan con las mismas métricas de la clase phishing:
+
+- **Matriz de confusión:** VP, FP (falsa alarma) y FN (phishing no detectado).
+- **Recall:** métrica prioritaria, porque minimiza los falsos negativos.
+- **Precision:** evita bloquear sitios legítimos.
+- **F1-Score**
+- **Curva ROC / AUC**
+
+## ☁️ Despliegue
+
+Ver [`docs/DESPLIEGUE_RENDER.md`](docs/DESPLIEGUE_RENDER.md). Start command:
+
+```bash
+streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+```
+
+## ⚖️ Licencia y responsabilidad
+
+Proyecto con fines exclusivamente académicos. Las predicciones son probabilísticas y no reemplazan soluciones de seguridad empresariales.

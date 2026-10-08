@@ -1,9 +1,19 @@
-import os
-import re
+"""
+PhishGuard — Interfaz web (Streamlit).
+
+Esta app NO contiene lógica de Machine Learning: todo pasa por src/predictor.py,
+que carga los .pkl de models/ y usa src/extractor.py.
+
+Ejecutar desde la raíz del proyecto:
+    python -m streamlit run app.py
+"""
 import html as htmllib
-import urllib.parse
+
 import streamlit as st
-import pandas as pd
+
+from src.evaluation import leer_metricas
+from src.models import MODELOS
+from src.predictor import modelos_disponibles, predecir_url
 
 # ==============================================================================
 # CONFIGURACIÓN DE PÁGINA
@@ -21,32 +31,6 @@ if isinstance(current_page, list):
     current_page = current_page[0]
 if current_page not in ("analizar", "modelos", "ayuda"):
     current_page = "analizar"
-
-# ==============================================================================
-# 🧬 EXTRACTOR DE CARACTERÍSTICAS LÉXICAS
-# (Compatible con extractor.py del proyecto)
-# ==============================================================================
-try:
-    from extractor import extract_features_from_url
-except ImportError:
-    def extract_features_from_url(url: str) -> pd.DataFrame:
-        p = urllib.parse.urlparse(url)
-        n = len(url)
-        return pd.DataFrame({
-            "url_length": [n],
-            "domain_length": [len(p.netloc)],
-            "is_ip": [1 if re.match(r"^[0-9]+(?:\.[0-9]+){3}$", p.netloc) else 0],
-            "is_https": [1 if p.scheme == "https" else 0],
-            "digit_ratio": [sum(c.isdigit() for c in url) / n if n else 0],
-            "special_char_count": [sum(not c.isalnum() for c in url)],
-        })
-
-# Carga de joblib
-try:
-    import joblib
-except ImportError:
-    joblib = None
-
 
 def md(s: str):
     """Renderiza HTML en Streamlit sin que el formateo de indentación lo rompa."""
@@ -158,6 +142,11 @@ details.faq p{margin:12px 0 0;color:#2b3550;line-height:1.7;font-size:.97rem;}
 .pg-title{font-size:2.3rem;font-weight:800;letter-spacing:-1px;margin:6px 0 10px;}
 .pg-sub{font-size:1.05rem;color:var(--muted);line-height:1.6;max-width:860px;margin-bottom:30px;}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;}
+.cmp{width:100%;border-collapse:collapse;border:1.5px solid var(--line);margin-top:8px;}
+.cmp th{background:var(--navy);color:#fff;text-align:left;padding:12px 16px;font-size:.9rem;}
+.cmp td{padding:14px 16px;border-bottom:1px solid var(--line);font-size:.95rem;}
+.cmp td:first-child{font-weight:700;}
 .card{background:#fff;border:1.5px solid var(--line);border-radius:18px;padding:28px;}
 .card h3{margin:0 0 12px;font-size:1.25rem;font-weight:800;color:var(--blue);}
 .card ul, .card ol{margin:0;padding-left:20px;line-height:1.8;color:#2b3550;font-size:.95rem;}
@@ -177,7 +166,7 @@ details.faq p{margin:12px 0 0;color:#2b3550;line-height:1.7;font-size:.97rem;}
   .block-container{padding:7.6rem 1.2rem 0 1.2rem !important;}
   .pg-header{padding:0 1rem;} .pg-header-in{gap:14px;} .pg-header-cta, .pg-logo-txt{display:none;}
   .pg-nav a{padding:8px 8px;font-size:.85rem;}
-  .hero-h1{font-size:2rem;} .g2,.steps,.foot-in,.res-grid{grid-template-columns:1fr;}
+  .hero-h1{font-size:2rem;} .g2,.g3,.steps,.foot-in,.res-grid{grid-template-columns:1fr;}
   .cta{padding:30px 24px;} .foot{margin:60px -1.2rem 0;padding:40px 1.2rem 24px;}
   .pg-status{font-size:.72rem;}
 }
@@ -186,58 +175,15 @@ details.faq p{margin:12px 0 0;color:#2b3550;line-height:1.7;font-size:.97rem;}
 st.markdown(CSS, unsafe_allow_html=True)
 
 # ==============================================================================
-# 🤖 DETECCIÓN Y CARGA AUTOMÁTICA DEL MODELO ML (.pkl)
+# 🤖 MODELOS DISPONIBLES (los .pkl que existan en models/)
 # ==============================================================================
-# INSTRUCCIÓN PARA EL EQUIPO:
-# Coloquen 'modelo_phishing.pkl', 'modelo_lr_phishing.pkl' o 'modelo_rf_phishing.pkl'
-# en la carpeta raíz del proyecto. La aplicación lo cargará y usará automáticamente.
-@st.cache_resource(show_spinner=False)
-def load_pipeline():
-    candidates = [
-        "modelo_phishing.pkl",
-        "modelo_lr_phishing.pkl",
-        "modelo_rf_phishing.pkl",
-        "modelo.pkl"
-    ]
-    for p in candidates:
-        if os.path.exists(p) and joblib is not None:
-            try:
-                return joblib.load(p), p
-            except Exception:
-                pass
-    # Búsqueda de respaldo si le dieron otro nombre al .pkl
-    if joblib is not None:
-        try:
-            for f in os.listdir("."):
-                if f.endswith(".pkl") and not f.startswith("."):
-                    try:
-                        return joblib.load(f), f
-                    except Exception:
-                        pass
-        except Exception:
-            pass
-    return None, None
-
-
-pipeline_ml, pipeline_path = load_pipeline()
-
-SUSPICIOUS = ["login", "verify", "secure", "account", "update", "bank", "banco", "pago", "free", "bonus", "signin"]
-
-
-def heuristic_prob(has_https, is_ip, url_len, n_kw, n_special):
-    score = 10
-    if not has_https: score += 25
-    if is_ip: score += 35
-    if url_len > 60: score += 15
-    score += n_kw * 15
-    if n_special > 8: score += 10
-    return min(max(score / 100.0, 0.01), 0.99)
-
+disponibles = modelos_disponibles()
+motor_txt = (f"{len(disponibles)} modelo(s) entrenado(s): " + ", ".join(disponibles.values())
+             if disponibles else "Modo heurístico (sin modelos entrenados)")
 
 # ==============================================================================
 # 🔝 BARRA DE ESTADO + ENCABEZADO FIJO
 # ==============================================================================
-motor_txt = f"Modelo ML activo ({pipeline_path})" if pipeline_ml is not None else "Modo heurístico (esperando .pkl)"
 on = lambda p: "on" if current_page == p else ""
 
 md(f"""
@@ -289,6 +235,16 @@ if current_page == "analizar":
             label_visibility="collapsed"
         )
         
+        # Selector de modelo (solo aparece si hay más de un .pkl entrenado)
+        modelo_elegido = None
+        if len(disponibles) > 1:
+            modelo_elegido = st.selectbox(
+                "Modelo",
+                options=list(disponibles),
+                format_func=lambda c: disponibles[c],
+                key="modelo_sel",
+            )
+
         st.button("Obtener detalles de URL", key="btn_run", type="primary", use_container_width=True)
 
         md('<div class="try-lbl">Prueba con un ejemplo de un clic:</div>')
@@ -315,33 +271,13 @@ if current_page == "analizar":
         if not raw_url:
             md('<div class="res-empty">Introduce una dirección URL para ver el análisis de seguridad en tiempo real.</div>')
         else:
-            norm_url = raw_url if "://" in raw_url else "http://" + raw_url
-            parsed = urllib.parse.urlparse(norm_url)
-            has_https = parsed.scheme.lower() == "https"
-            host = parsed.hostname or ""
-            is_ip = bool(re.match(r"^[0-9]+(?:\.[0-9]+){3}$", host))
-            url_len = len(norm_url)
-            n_special = sum(not c.isalnum() for c in norm_url)
-            kws = [w for w in SUSPICIOUS if w in norm_url.lower()]
+            r = predecir_url(raw_url, clave=modelo_elegido)
+            prob, motor, debug_error = r.probabilidad, r.motor, r.error
+            host, has_https = r.resumen["host"], r.resumen["https"]
+            is_ip, url_len = r.resumen["es_ip"], r.resumen["longitud"]
+            kws = r.palabras_sensibles
 
-            prob, motor, debug_error = None, None, None
-            
-            # Intento de inferencia con el Pipeline entrenado
-            if pipeline_ml is not None:
-                try:
-                    df = extract_features_from_url(norm_url)
-                    prob = float(pipeline_ml.predict_proba(df)[0][1])
-                    motor = f"Scikit-Learn ({pipeline_path})"
-                except Exception as ex:
-                    prob = None
-                    debug_error = str(ex)
-
-            # Respaldo heurístico
-            if prob is None:
-                prob = heuristic_prob(has_https, is_ip, url_len, len(kws), n_special)
-                motor = "Heurístico léxico" + (" (error al predecir .pkl)" if pipeline_ml is not None else " (esperando .pkl)")
-
-            threat = prob >= 0.5
+            threat = r.es_phishing
             cls = "bad" if threat else "ok"
             title = "Phishing / Sospechosa" if threat else "Segura / Legítima"
             conf = f"{prob*100:.1f}% de riesgo" if threat else f"{(1-prob)*100:.1f}% de seguridad"
@@ -369,7 +305,9 @@ if current_page == "analizar":
             """)
 
             if debug_error:
-                st.caption(f"ℹ️ Detalle para desarrolladores: el archivo `{pipeline_path}` arrojó: {debug_error}. Revisa que extractor.py devuelva las mismas columnas del entrenamiento.")
+                st.caption(f"ℹ️ Detalle para desarrolladores: el modelo arrojó «{debug_error}». "
+                           "Revisen que src/extractor.py calcule las mismas columnas del entrenamiento "
+                           "(python -m scripts.validar_extractor).")
 
     # ---------------- Contenido Informativo (NordVPN Style) ----------------
     md("""
@@ -417,19 +355,42 @@ if current_page == "analizar":
 elif current_page == "modelos":
     md("""
     <div class="pg-title">Modelos de Inteligencia Artificial</div>
-    <div class="pg-sub">Fundamentación técnica, formulación y comparación de algoritmos entrenados para la clasificación de phishing sobre más de 116,600 muestras.</div>
-    <div class="g2">
-      <div class="card"><h3>1. Regresión Logística (Modelo Lineal)</h3><ul>
-        <li><strong>Tipo:</strong> Clasificador probabilístico lineal fundamentado en la función sigmoide.</li>
-        <li><strong>Estimación de Certeza:</strong> Genera probabilidades continuas de 0% a 100% mediante <code>.predict_proba()</code>.</li>
-        <li><strong>Interpretabilidad:</strong> Permite conocer la influencia directa de cada variable predictora mediante sus coeficientes y odds-ratios.</li>
-        <li><strong>Tratamiento del Desbalance:</strong> Ajustado con <code>class_weight='balanced'</code> para penalizar los falsos negativos de phishing (14% de la muestra total).</li></ul></div>
-      <div class="card"><h3>2. Bosques Aleatorios / Árboles de Decisión</h3><ul>
-        <li><strong>Tipo:</strong> Modelo de ensamble no lineal basado en árboles y particiones ortogonales jerárquicas.</li>
-        <li><strong>Interacciones Complejas:</strong> Detecta combinaciones sospechosas (ej. ausencia de HTTPS + dominio IP + longitud superior a 75 caracteres).</li>
-        <li><strong>Importancia de Variables:</strong> Pondera la capacidad de discriminación de cada métrica mediante la reducción de impureza de Gini.</li>
-        <li><strong>Evaluación Comparativa:</strong> Comparación rigurosa de Curvas ROC, AUC, Precision y Recall frente a la Regresión Logística.</li></ul></div>
+    <div class="pg-sub">Fundamentación técnica y comparación de los tres algoritmos entrenados para la clasificación de phishing sobre más de 116,600 muestras.</div>
+    <div class="g3">
+      <div class="card"><h3>1. Regresión Logística</h3><ul>
+        <li><strong>Tipo:</strong> Clasificador probabilístico lineal basado en la función sigmoide.</li>
+        <li><strong>Certeza:</strong> Probabilidades continuas de 0% a 100% con <code>.predict_proba()</code>.</li>
+        <li><strong>Interpretabilidad:</strong> Influencia de cada variable mediante coeficientes y odds-ratios.</li>
+        <li><strong>Desbalance:</strong> <code>class_weight='balanced'</code> para la clase minoritaria (14%).</li></ul></div>
+      <div class="card"><h3>2. Random Forest</h3><ul>
+        <li><strong>Tipo:</strong> Ensamble no lineal de árboles de decisión.</li>
+        <li><strong>Interacciones:</strong> Detecta combinaciones sospechosas (sin HTTPS + IP + URL muy larga).</li>
+        <li><strong>Importancia de variables:</strong> Reducción de impureza de Gini.</li>
+        <li><strong>Escalado:</strong> No lo necesita (particiones por umbral).</li></ul></div>
+      <div class="card"><h3>3. SVM lineal</h3><ul>
+        <li><strong>Tipo:</strong> Clasificador lineal de margen máximo.</li>
+        <li><strong>Escalado:</strong> Requiere <code>StandardScaler</code>, es sensible a la escala.</li>
+        <li><strong>Probabilidades:</strong> Calibradas para obtener valores de 0% a 100%.</li>
+        <li><strong>Ventaja:</strong> Rápido y robusto en espacios con muchas variables.</li></ul></div>
     </div>
+    """)
+
+    # ---------------- Tabla comparativa (se llena sola al entrenar) ----------------
+    metricas = leer_metricas()
+    filas = ""
+    for clave, mod in MODELOS.items():
+        m = metricas.get(clave)
+        if m:
+            celdas = "".join(f"<td>{m[k]:.3f}</td>" for k in ("precision", "recall", "f1", "auc", "accuracy"))
+        else:
+            celdas = '<td colspan="5" style="color:var(--muted)">Pendiente de entrenar</td>'
+        filas += f"<tr><td>{htmllib.escape(mod.NOMBRE)}<br><span style='font-weight:400;font-size:.85rem;color:var(--muted)'>{htmllib.escape(mod.RESPONSABLE)}</span></td>{celdas}</tr>"
+    md(f"""
+    <div class="sec"><h2>Comparación en el conjunto de prueba (clase phishing)</h2>
+      <div style="overflow-x:auto"><table class="cmp">
+        <tr><th>Modelo</th><th>Precision</th><th>Recall</th><th>F1</th><th>AUC</th><th>Accuracy</th></tr>
+        {filas}
+      </table></div></div>
     """)
 
 # ==============================================================================
@@ -468,7 +429,7 @@ md("""
       <ul>
         <li>👨‍💻 Alejandro Flores</li>
         <li>👨‍💻 Paul Rosero</li>
-        <li>👩‍💻 Gloria Chassi</li>
+        <li>👩‍💻 Gloria Chushig</li>
       </ul>
     </div>
     <div>
