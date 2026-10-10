@@ -8,10 +8,10 @@ Este documento detalla el estado actual del proyecto, los pasos pendientes que d
 
 ### ✅ Lo que ya está listo
 * **Aplicación web (`app.py`):** interfaz completa. Toda la lógica de ML pasa por `src/predictor.py`.
-* **Carga automática de modelos:** la app usa los `.pkl` que existan en `models/` (`modelo_lr.pkl`, `modelo_rf.pkl`, `modelo_svm.pkl`). Si hay varios, muestra un selector; si no hay ninguno, funciona en modo heurístico.
+* **Carga automática de modelos:** la app usa los `.pkl` que existan en `models/` (`modelo_lr.pkl`, `modelo_svm.pkl`, `modelo_svm_rbf.pkl`). Si hay varios, muestra un selector; si no hay ninguno, funciona en modo heurístico.
 * **Dependencias (`requirements.txt`):** declaradas.
 
-### ⏳ Lo que falta antes del despliegue final
+### ✅ Requisitos previos (ya completados)
 1. Entrenar los modelos (`python -m scripts.entrenar todos` o los notebooks) y **subir a GitHub los `.pkl` de `models/`**.
 2. Validar el extractor: `python -m scripts.validar_extractor` debe salir todo en ✅.
 3. Fijar en `requirements.txt` la versión exacta de scikit-learn con la que se entrenó.
@@ -40,9 +40,9 @@ En el formulario de configuración, completa los campos con los siguientes valor
 | :--- | :--- |
 | **Name** | `phishguard-ai` *(o el nombre que prefieras para tu subdominio)* |
 | **Region** | `Oregon (US West)` u `Ohio (US East)` |
-| **Branch** | `alejo` *(o `main` si ya fusionaron la rama)* |
+| **Branch** | `main` *(después de fusionar el Pull Request de `alejo`)* |
 | **Root Directory** | *(Dejar en blanco / vacío)* |
-| **Environment / Runtime** | `Python 3` |
+| **Environment / Runtime** | `Python 3` *(la versión 3.12 la fija el archivo `.python-version`)* |
 | **Build Command** | `pip install -r requirements.txt` |
 | **Start Command** | `streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true` |
 | **Instance Type** | `Free` *(0.5 CPU, 512 MB RAM)* |
@@ -68,7 +68,7 @@ En el formulario de configuración, completa los campos con los siguientes valor
    * En el plan gratuito de Render, el servidor entra en modo de reposo si no recibe visitas durante 15 minutos.
    * La primera persona que ingrese tras un período de inactividad experimentará una espera de aproximadamente **30 a 50 segundos** mientras el servidor despierta. Las siguientes peticiones responderán instantáneamente.
 2. **Tamaño del archivo `.pkl`:**
-   * GitHub tiene un límite de 100 MB por archivo. Los modelos de Scikit-Learn (Regresión Logística o Random Forest podado) pesan habitualmente entre **5 MB y 40 MB**, por lo que podrás subirlo a GitHub con `git add modelo_phishing.pkl` y Render lo descargará sin problemas.
+   * GitHub tiene un límite de 100 MB por archivo. Los tres modelos del proyecto pesan menos de 1 MB en total (el SVM gaussiano ≈ 0,5 MB, comprimidos con joblib), así que se suben sin problema y Render los descarga con el repositorio.
 3. **Actualizaciones Automáticas (*Auto-Deploy*):**
    * Cada vez que hagas un `git push` a la rama configurada (`alejo`), Render detectará los cambios y re-desplegará la aplicación automáticamente sin que tengas que intervenir.
 

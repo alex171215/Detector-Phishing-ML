@@ -11,7 +11,7 @@ from sklearn.preprocessing import StandardScaler
 def construir_preprocesador(features: list[str], escalar: bool = True) -> ColumnTransformer:
     """
     escalar=True  → StandardScaler (necesario para Regresión Logística y SVM lineal).
-    escalar=False → passthrough (los árboles / Random Forest no lo necesitan).
+    escalar=False → passthrough (para modelos que no dependen de la escala).
     """
     transformador = StandardScaler() if escalar else "passthrough"
     return ColumnTransformer(

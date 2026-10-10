@@ -17,24 +17,6 @@
     ],
     "modelo": "Regresión Logística"
   },
-  "rf": {
-    "accuracy": 0.9762225018440578,
-    "precision": 0.894137734775185,
-    "recall": 0.946955997588909,
-    "f1": 0.9197892271662763,
-    "auc": 0.99347609017192,
-    "matriz_confusion": [
-      [
-        19357,
-        372
-      ],
-      [
-        176,
-        3142
-      ]
-    ],
-    "modelo": "Random Forest"
-  },
   "svm": {
     "accuracy": 0.954397535470994,
     "precision": 0.9102424900470503,
@@ -52,5 +34,23 @@
       ]
     ],
     "modelo": "SVM lineal"
+  },
+  "svm_rbf": {
+    "accuracy": 0.9740096324901288,
+    "precision": 0.9153681637641308,
+    "recall": 0.9029535864978903,
+    "f1": 0.9091184949173114,
+    "auc": 0.9905797699882228,
+    "matriz_confusion": [
+      [
+        19452,
+        277
+      ],
+      [
+        322,
+        2996
+      ]
+    ],
+    "modelo": "SVM gaussiano (RBF)"
   }
 }

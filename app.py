@@ -213,7 +213,7 @@ md(f"""
 # 📄 PÁGINA 1: ANALIZAR URL (HERRAMIENTA PRINCIPAL)
 # ==============================================================================
 if current_page == "analizar":
-    # Ejemplos verificados con el modelo ganador (Random Forest). Son parecidos a las URLs
+    # Ejemplos verificados con el modelo ganador. Son parecidos a las URLs
     # del dataset: benignas = páginas principales; phishing = hosting gratuito y cadenas raras.
     EJ_PHISH = "https://bancopichincha-seguridad.webcindario.com/login.php?id=8823"
     
@@ -371,17 +371,16 @@ elif current_page == "modelos":
         <li><strong>Certeza:</strong> Probabilidades continuas de 0% a 100% con <code>.predict_proba()</code>.</li>
         <li><strong>Interpretabilidad:</strong> Influencia de cada variable mediante coeficientes y odds-ratios.</li>
         <li><strong>Desbalance:</strong> <code>class_weight='balanced'</code> para la clase minoritaria (14%).</li></ul></div>
-      <div class="card"><h3>2. Random Forest</h3><ul>
-        <li><strong>Tipo:</strong> Ensamble no lineal de árboles de decisión.</li>
-        <li><strong>Interacciones:</strong> Detecta combinaciones no lineales (p. ej. HTTPS + alta entropía + muchos dígitos).</li>
-        <li><strong>Variables clave:</strong> <code>is_https</code>, <code>entropy</code>, <code>digit_ratio</code> y <code>dom_len</code>.</li>
-        <li><strong>Importancia de variables:</strong> Reducción de impureza de Gini.</li>
-        <li><strong>Escalado:</strong> No lo necesita (particiones por umbral).</li></ul></div>
-      <div class="card"><h3>3. SVM lineal</h3><ul>
+      <div class="card"><h3>2. SVM lineal</h3><ul>
         <li><strong>Tipo:</strong> Clasificador lineal de margen máximo.</li>
         <li><strong>Escalado:</strong> Requiere <code>StandardScaler</code>, es sensible a la escala.</li>
         <li><strong>Probabilidades:</strong> Calibradas para obtener valores de 0% a 100%.</li>
         <li><strong>Ventaja:</strong> Rápido y robusto en espacios con muchas variables.</li></ul></div>
+      <div class="card"><h3>3. SVM gaussiano (RBF)</h3><ul>
+        <li><strong>Tipo:</strong> SVM con kernel gaussiano: <code>K(x, x') = exp(−γ·‖x − x'‖²)</code>.</li>
+        <li><strong>Frontera:</strong> No lineal y flexible: la similitud entre URLs decae con su distancia.</li>
+        <li><strong>Escalado:</strong> Requiere <code>StandardScaler</code>.</li>
+        <li><strong>Probabilidades:</strong> Escalado de Platt (<code>probability=True</code>).</li></ul></div>
     </div>
     """)
 

@@ -33,3 +33,6 @@ phishusill-2-notebook.ipynb
 
 # Secretos de Streamlit (si alguna vez se usan)
 .streamlit/secrets.toml
+
+# Respaldo local de la versión con Random Forest (no se sube)
+_respaldo_random_forest/
