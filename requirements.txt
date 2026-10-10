@@ -1,10 +1,10 @@
-# TODO(equipo): cuando entrenen el modelo final, fijen aquí la versión exacta de
-# scikit-learn que usaron (pip show scikit-learn), p. ej. scikit-learn==1.5.2.
-# Si Render instala otra versión, el .pkl puede no cargar.
+# Versión de scikit-learn fijada: los .pkl de models/ se entrenaron con 1.9.1.
+# Con otra versión pueden no cargar (en local ni en Render).
 pandas
 numpy
-scikit-learn
+scikit-learn==1.9.1
 joblib
 streamlit
 matplotlib
 seaborn
+tldextract
