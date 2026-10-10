@@ -23,5 +23,13 @@ Dataset.csv
 phishing-url-detection-using-rf-minilm-lr.ipynb
 phishusill-2-notebook.ipynb
 *.pdf
+# ...excepto el informe final, que SÍ se sube
+!docs/*.pdf
 
 # Los .pkl de models/ SÍ se suben (Render los necesita para la app).
+
+# Archivos temporales de Word/Office (aparecen al tener el informe abierto)
+~$*
+
+# Secretos de Streamlit (si alguna vez se usan)
+.streamlit/secrets.toml

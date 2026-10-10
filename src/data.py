@@ -22,7 +22,11 @@ def cargar_dataset(ruta=None) -> pd.DataFrame:
     if "tld" in df.columns:
         df["tld"] = df["tld"].fillna("none")
 
-    # TODO(equipo): ¿eliminar duplicados? df = df.drop_duplicates(subset=config.COLUMNA_URL)
+    # Se eliminan las URLs repetidas (1.369 en el dataset original, todas con la misma
+    # etiqueta). Si se quedan, una misma URL puede caer en entrenamiento y en prueba
+    # (fuga de datos) e inflar las métricas.
+    if config.COLUMNA_URL in df.columns:
+        df = df.drop_duplicates(subset=config.COLUMNA_URL).reset_index(drop=True)
     return df
 
 

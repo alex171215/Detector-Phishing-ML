@@ -35,5 +35,7 @@ def exportar_final(clave: str, df=None):
 
     config.DIR_MODELOS.mkdir(exist_ok=True)
     ruta = ruta_modelo(clave)
-    joblib.dump(pipeline, ruta)
-    return ruta
+    # compress=3 reduce mucho el tamaño (clave para el Random Forest: GitHub
+    # rechaza archivos de más de 100 MB) y el .pkl se carga igual con joblib.load.
+    joblib.dump(pipeline, ruta, compress=3)
+    return ruta.relative_to(config.RAIZ)       # p. ej. models/modelo_rf.pkl

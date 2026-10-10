@@ -35,9 +35,12 @@ class Prediccion:
 
 
 def normalizar_url(url: str) -> str:
+    """
+    Deja la URL en el mismo formato que las del dataset: todas empiezan con
+    'http://' o 'https://'. Si el usuario no escribe el esquema, se asume 'http://'.
+    (No se agrega '/' al final: el dataset trae URLs con y sin barra final.)
+    """
     url = (url or "").strip()
-    # TODO(equipo): verificar si las URLs del dataset traen 'http://'. Si NO lo
-    # traen, aquí habría que quitarlo para que el extractor calcule igual.
     return url if "://" in url else "http://" + url
 
 

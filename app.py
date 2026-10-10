@@ -11,6 +11,7 @@ import html as htmllib
 
 import streamlit as st
 
+from src import config
 from src.evaluation import leer_metricas
 from src.models import MODELOS
 from src.predictor import modelos_disponibles, predecir_url
@@ -189,7 +190,7 @@ on = lambda p: "on" if current_page == p else ""
 md(f"""
 <div class="pg-status">
   <span>Motor: <b>{htmllib.escape(motor_txt)}</b></span><span class="pg-dot"></span>
-  <span>Dataset: <b>116,600+ URLs</b></span><span class="pg-dot"></span>
+  <span>Dataset: <b>115,000+ URLs</b></span><span class="pg-dot"></span>
   <span>Privacidad: <b>evaluación volátil en memoria</b></span>
 </div>
 <header class="pg-header"><div class="pg-header-in">
@@ -212,7 +213,9 @@ md(f"""
 # 📄 PÁGINA 1: ANALIZAR URL (HERRAMIENTA PRINCIPAL)
 # ==============================================================================
 if current_page == "analizar":
-    EJ_PHISH = "http://banco-pichincha-seguridad-login.net/actualizar-datos.php?id=82931"
+    # Ejemplos verificados con el modelo ganador (Random Forest). Son parecidos a las URLs
+    # del dataset: benignas = páginas principales; phishing = hosting gratuito y cadenas raras.
+    EJ_PHISH = "https://bancopichincha-seguridad.webcindario.com/login.php?id=8823"
     
     if "url_input" not in st.session_state:
         st.session_state["url_input"] = EJ_PHISH
@@ -238,9 +241,13 @@ if current_page == "analizar":
         # Selector de modelo (solo aparece si hay más de un .pkl entrenado)
         modelo_elegido = None
         if len(disponibles) > 1:
+            opciones = list(disponibles)
             modelo_elegido = st.selectbox(
                 "Modelo",
-                options=list(disponibles),
+                options=opciones,
+                # Por defecto, el ganador de la comparación (config.MODELO_POR_DEFECTO)
+                index=opciones.index(config.MODELO_POR_DEFECTO)
+                      if config.MODELO_POR_DEFECTO in opciones else 0,
                 format_func=lambda c: disponibles[c],
                 key="modelo_sel",
             )
@@ -250,9 +257,9 @@ if current_page == "analizar":
         md('<div class="try-lbl">Prueba con un ejemplo de un clic:</div>')
         examples = [
             ("🚨 Phishing banco", EJ_PHISH),
-            ("🚨 IP sospechosa", "http://192.168.1.105/paypal/signin/verification.php"),
-            ("✅ Google", "https://www.google.com/search?q=phishing+detection"),
-            ("✅ GitHub", "https://github.com/alex171215/Detector-Phishing-ML"),
+            ("🚨 Falso PayPal", "https://paypa1-verify-account.weebly.com/"),
+            ("✅ Pichincha", "https://www.bancopichincha.com/"),
+            ("✅ ESPE", "https://www.espe.edu.ec/"),
         ]
         
         for col, (label, url) in zip(st.columns(4), examples):
@@ -319,7 +326,7 @@ if current_page == "analizar":
       <a href="#faq" target="_self">Preguntas frecuentes</a>
     </div>
     <div class="sec" id="que-es"><h2>¿Qué es la herramienta de análisis de URL?</h2>
-      <p>PhishGuard es un servicio académico gratuito que estima si un enlace presenta características de phishing. Extrae variables léxicas y morfológicas de la URL (longitud, protocolo, tipo de dirección, caracteres especiales y palabras sensibles) y las evalúa con algoritmos de Machine Learning entrenados con más de 116,600 registros.</p></div>
+      <p>PhishGuard es un servicio académico gratuito que estima si un enlace presenta características de phishing. Extrae variables léxicas y morfológicas de la URL (longitud, protocolo, tipo de dirección, caracteres especiales y palabras sensibles) y las evalúa con algoritmos de Machine Learning entrenados con más de 115.000 URLs únicas. El modelo usa 22 variables numéricas de la URL; las palabras sensibles se muestran solo como referencia para el usuario.</p></div>
     <div class="sec" id="que-revela"><h2>¿Qué información revela el análisis?</h2>
       <table class="tbl">
         <tr><td>Nivel de riesgo</td><td>Una probabilidad continua de phishing entre 0% y 100% calculada por el modelo predictivo.</td></tr>
@@ -330,6 +337,8 @@ if current_page == "analizar":
       <table class="tbl">
         <tr><td>El contenido interno de la página</td><td>El análisis es morfológico-léxico: no ejecuta JavaScript ni rastrea formularios ocultos dentro del sitio web.</td></tr>
         <tr><td>Identidad del remitente</td><td>No determina la identidad legal de quien envió el correo o mensaje con el enlace.</td></tr>
+        <tr><td>Enlaces profundos de sitios legítimos</td><td>El dataset de entrenamiento contiene sobre todo páginas principales de sitios legítimos (p. ej. <code>https://www.espe.edu.ec/</code>). Por eso, un enlace legítimo largo, con números o parámetros (una búsqueda, un artículo, un repositorio) puede recibir un riesgo más alto del real.</td></tr>
+        <tr><td>URLs con dirección IP</td><td>Solo 13 de las 115.000 URLs del dataset son una IP, así que el modelo no aprendió a usar esa señal; la app la muestra igualmente como factor de riesgo.</td></tr>
         <tr><td>Certeza absoluta del 100%</td><td>Se trata de inferencias probabilísticas basadas en datos estadísticos; siempre se recomienda precaución perimetral.</td></tr>
       </table></div>
     <div class="cta">
@@ -355,7 +364,7 @@ if current_page == "analizar":
 elif current_page == "modelos":
     md("""
     <div class="pg-title">Modelos de Inteligencia Artificial</div>
-    <div class="pg-sub">Fundamentación técnica y comparación de los tres algoritmos entrenados para la clasificación de phishing sobre más de 116,600 muestras.</div>
+    <div class="pg-sub">Fundamentación técnica y comparación de los tres algoritmos entrenados para la clasificación de phishing sobre más de 115.000 URLs únicas.</div>
     <div class="g3">
       <div class="card"><h3>1. Regresión Logística</h3><ul>
         <li><strong>Tipo:</strong> Clasificador probabilístico lineal basado en la función sigmoide.</li>
@@ -364,7 +373,8 @@ elif current_page == "modelos":
         <li><strong>Desbalance:</strong> <code>class_weight='balanced'</code> para la clase minoritaria (14%).</li></ul></div>
       <div class="card"><h3>2. Random Forest</h3><ul>
         <li><strong>Tipo:</strong> Ensamble no lineal de árboles de decisión.</li>
-        <li><strong>Interacciones:</strong> Detecta combinaciones sospechosas (sin HTTPS + IP + URL muy larga).</li>
+        <li><strong>Interacciones:</strong> Detecta combinaciones no lineales (p. ej. HTTPS + alta entropía + muchos dígitos).</li>
+        <li><strong>Variables clave:</strong> <code>is_https</code>, <code>entropy</code>, <code>digit_ratio</code> y <code>dom_len</code>.</li>
         <li><strong>Importancia de variables:</strong> Reducción de impureza de Gini.</li>
         <li><strong>Escalado:</strong> No lo necesita (particiones por umbral).</li></ul></div>
       <div class="card"><h3>3. SVM lineal</h3><ul>
@@ -384,7 +394,9 @@ elif current_page == "modelos":
             celdas = "".join(f"<td>{m[k]:.3f}</td>" for k in ("precision", "recall", "f1", "auc", "accuracy"))
         else:
             celdas = '<td colspan="5" style="color:var(--muted)">Pendiente de entrenar</td>'
-        filas += f"<tr><td>{htmllib.escape(mod.NOMBRE)}<br><span style='font-weight:400;font-size:.85rem;color:var(--muted)'>{htmllib.escape(mod.RESPONSABLE)}</span></td>{celdas}</tr>"
+        insignia = " 🏆 <span style='font-weight:400;font-size:.8rem'>(ganador, usado por defecto)</span>" \
+            if clave == config.MODELO_POR_DEFECTO else ""
+        filas += f"<tr><td>{htmllib.escape(mod.NOMBRE)}{insignia}<br><span style='font-weight:400;font-size:.85rem;color:var(--muted)'>{htmllib.escape(mod.RESPONSABLE)}</span></td>{celdas}</tr>"
     md(f"""
     <div class="sec"><h2>Comparación en el conjunto de prueba (clase phishing)</h2>
       <div style="overflow-x:auto"><table class="cmp">

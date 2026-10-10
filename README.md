@@ -56,7 +56,10 @@ ProyectoRDA1/
 │   └── validar_extractor.py    # python -m scripts.validar_extractor
 │
 └── docs/
+    ├── Informe_PhishGuard.pdf  # informe final (y .docx editable)
+    ├── capturas/               # capturas de la app para el informe
     ├── Plan de acción.md
+    ├── PLAN_IMPLEMENTACION.md
     ├── DESPLIEGUE_RENDER.md
     └── Taller_Regresion_Logistica.html
 ```
@@ -75,24 +78,29 @@ Dataset.csv ─► data.py ─► preprocessing.py + models/<tu_modelo>.py ─�
 
 Cada integrante **solo programa `construir_clasificador()`** en su archivo de `src/models/`. Esa función devuelve el estimador de scikit-learn sin entrenar. El código común ya resuelve lo demás: preprocesamiento, Pipeline, partición, métricas, gráficos, exportación del `.pkl`, la tabla de la app y la conexión con la interfaz.
 
-## ✅ Pendientes
+## 📊 Resultados
 
-1. **Todos:** poner `Dataset.csv` en `data/` y correr el notebook `01`.
-2. **Todos (antes de entrenar):** revisar `df.columns` y llenar en `src/config.py` las listas `FEATURES` y `COLUMNAS_EXCLUIDAS`. Después, completar `src/extractor.py` hasta que `python -m scripts.validar_extractor` salga todo en ✅.
-3. **Paul:** revisar `logistic_regression.py` (ya trae la configuración original) y completar el notebook `02`.
-4. **Alejandro:** implementar `random_forest.py` y completar el notebook `03`.
-5. **Gloria:** implementar `linear_svm.py` y completar el notebook `04`.
-6. **Todos:** notebook `05`, elegir el ganador y poner su clave en `config.MODELO_POR_DEFECTO`.
-7. Completar las interpretaciones (`TODO`) en los notebooks, el gráfico 3 del EDA, el informe PDF y la demo.
+Evaluación en el conjunto de prueba (23.047 URLs, 3.318 de phishing), después de eliminar 1.369 URLs duplicadas:
 
-Pueden buscar todo lo pendiente con: `grep -rn "TODO" src notebooks`.
+| Modelo | Recall | Precision | F1 | AUC | Ataques no detectados (FN) | Falsas alarmas (FP) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Regresión Logística | 0,920 | 0,686 | 0,786 | 0,977 | 264 | 1.396 |
+| **Random Forest 🏆** | **0,947** | 0,894 | **0,920** | **0,993** | **176** | 372 |
+| SVM lineal | 0,758 | **0,910** | 0,827 | 0,976 | 803 | **248** |
+
+**Modelo ganador: Random Forest** (`config.MODELO_POR_DEFECTO = "rf"`). Tiene el mejor Recall, F1 y AUC, y la
+validación cruzada estratificada de 5 particiones confirma que la ventaja es estable (ver notebook `05`).
+
+- El extractor (`src/extractor.py`) reproduce las 22 variables del dataset: `python -m scripts.validar_extractor` → 22/22 ✅.
+- Informe final: [`docs/Informe_PhishGuard.pdf`](docs/Informe_PhishGuard.pdf) (versión editable en `.docx`).
+- Capturas de la aplicación: [`docs/capturas/`](docs/capturas/).
 
 ## 🚀 Instalación y ejecución
 
 ```bash
 git clone https://github.com/alex171215/Detector-Phishing-ML.git
 cd Detector-Phishing-ML
-python -m pip install -r requirements.txt
+python -m pip install -r requirements.txt   # Python 3.11+ (scikit-learn 1.9.1)
 ```
 
 Entrenar (desde la raíz del proyecto):
@@ -111,7 +119,7 @@ La app carga sola los `.pkl` que existan en `models/`. Si hay más de uno, muest
 
 ## 📊 Métricas
 
-El dataset está desbalanceado (~85.8% benignas y ~14.2% phishing), así que el *Accuracy* por sí solo no basta. Los tres modelos se evalúan con las mismas métricas de la clase phishing:
+El dataset está desbalanceado (~85,6 % benignas y ~14,4 % phishing, sin duplicados), así que el *Accuracy* por sí solo no basta. Los tres modelos se evalúan con las mismas métricas de la clase phishing:
 
 - **Matriz de confusión:** VP, FP (falsa alarma) y FN (phishing no detectado).
 - **Recall:** métrica prioritaria, porque minimiza los falsos negativos.
