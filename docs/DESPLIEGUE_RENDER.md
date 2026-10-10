@@ -11,7 +11,7 @@ Este documento detalla el estado actual del proyecto, los pasos pendientes que d
 * **Carga automática de modelos:** la app usa los `.pkl` que existan en `models/` (`modelo_lr.pkl`, `modelo_rf.pkl`, `modelo_svm.pkl`). Si hay varios, muestra un selector; si no hay ninguno, funciona en modo heurístico.
 * **Dependencias (`requirements.txt`):** declaradas.
 
-### ⏳ Lo que falta antes del despliegue final
+### ✅ Requisitos previos (ya completados)
 1. Entrenar los modelos (`python -m scripts.entrenar todos` o los notebooks) y **subir a GitHub los `.pkl` de `models/`**.
 2. Validar el extractor: `python -m scripts.validar_extractor` debe salir todo en ✅.
 3. Fijar en `requirements.txt` la versión exacta de scikit-learn con la que se entrenó.
@@ -40,9 +40,9 @@ En el formulario de configuración, completa los campos con los siguientes valor
 | :--- | :--- |
 | **Name** | `phishguard-ai` *(o el nombre que prefieras para tu subdominio)* |
 | **Region** | `Oregon (US West)` u `Ohio (US East)` |
-| **Branch** | `alejo` *(o `main` si ya fusionaron la rama)* |
+| **Branch** | `main` *(después de fusionar el Pull Request de `alejo`)* |
 | **Root Directory** | *(Dejar en blanco / vacío)* |
-| **Environment / Runtime** | `Python 3` |
+| **Environment / Runtime** | `Python 3` *(la versión 3.12 la fija el archivo `.python-version`)* |
 | **Build Command** | `pip install -r requirements.txt` |
 | **Start Command** | `streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true` |
 | **Instance Type** | `Free` *(0.5 CPU, 512 MB RAM)* |
