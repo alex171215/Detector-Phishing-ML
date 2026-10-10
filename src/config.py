@@ -53,5 +53,5 @@ TEST_SIZE = 0.20
 UMBRAL_PHISHING = 0.5               # probabilidad a partir de la cual se marca phishing
 
 # Modelo que la app usa por defecto: el ganador de la comparación (notebook 05).
-# Random Forest → mejor Recall, F1 y AUC de los tres modelos.
-MODELO_POR_DEFECTO = "rf"
+# SVM gaussiano (RBF) → mejor F1 y AUC de los cuatro modelos.
+MODELO_POR_DEFECTO = "svm_rbf"

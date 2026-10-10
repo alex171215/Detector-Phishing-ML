@@ -8,7 +8,7 @@ Este documento detalla el estado actual del proyecto, los pasos pendientes que d
 
 ### ✅ Lo que ya está listo
 * **Aplicación web (`app.py`):** interfaz completa. Toda la lógica de ML pasa por `src/predictor.py`.
-* **Carga automática de modelos:** la app usa los `.pkl` que existan en `models/` (`modelo_lr.pkl`, `modelo_rf.pkl`, `modelo_svm.pkl`). Si hay varios, muestra un selector; si no hay ninguno, funciona en modo heurístico.
+* **Carga automática de modelos:** la app usa los `.pkl` que existan en `models/` (`modelo_lr.pkl`, `modelo_svm.pkl`, `modelo_svm_poly.pkl`, `modelo_svm_rbf.pkl`). Si hay varios, muestra un selector; si no hay ninguno, funciona en modo heurístico.
 * **Dependencias (`requirements.txt`):** declaradas.
 
 ### ✅ Requisitos previos (ya completados)
@@ -68,7 +68,7 @@ En el formulario de configuración, completa los campos con los siguientes valor
    * En el plan gratuito de Render, el servidor entra en modo de reposo si no recibe visitas durante 15 minutos.
    * La primera persona que ingrese tras un período de inactividad experimentará una espera de aproximadamente **30 a 50 segundos** mientras el servidor despierta. Las siguientes peticiones responderán instantáneamente.
 2. **Tamaño del archivo `.pkl`:**
-   * GitHub tiene un límite de 100 MB por archivo. Los modelos de Scikit-Learn (Regresión Logística o Random Forest podado) pesan habitualmente entre **5 MB y 40 MB**, por lo que podrás subirlo a GitHub con `git add modelo_phishing.pkl` y Render lo descargará sin problemas.
+   * GitHub tiene un límite de 100 MB por archivo. Los cuatro modelos del proyecto pesan menos de 1 MB en total (los SVM con kernel ≈ 0,4–0,5 MB, comprimidos con joblib), así que se suben sin problema y Render los descarga con el repositorio.
 3. **Actualizaciones Automáticas (*Auto-Deploy*):**
    * Cada vez que hagas un `git push` a la rama configurada (`alejo`), Render detectará los cambios y re-desplegará la aplicación automáticamente sin que tengas que intervenir.
 

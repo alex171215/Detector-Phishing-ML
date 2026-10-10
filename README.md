@@ -1,6 +1,6 @@
 # 🛡️ PhishGuard: detector de phishing en URLs con Machine Learning
 
-Sistema que clasifica URLs como **benignas (0)** o **phishing (1)** a partir de sus características léxicas y estructurales. Compara tres modelos de scikit-learn y despliega el ganador en una aplicación web con **Streamlit**.
+Sistema que clasifica URLs como **benignas (0)** o **phishing (1)** a partir de sus características léxicas y estructurales. Compara cuatro modelos de scikit-learn (Regresión Logística y SVM lineal, polinómico y gaussiano) y despliega el ganador en una aplicación web con **Streamlit**.
 
 *Proyecto académico de Inteligencia Artificial (Semestre 6): clasificación supervisada y ciberseguridad.*
 
@@ -9,7 +9,7 @@ Sistema que clasifica URLs como **benignas (0)** o **phishing (1)** a partir de 
 | Integrante | Modelo | Archivo de lógica | Notebook |
 | --- | --- | --- | --- |
 | **Paul Rosero** | Regresión Logística | `src/models/logistic_regression.py` | `notebooks/02_regresion_logistica.ipynb` |
-| **Alejandro Flores** | Random Forest | `src/models/random_forest.py` | `notebooks/03_random_forest.ipynb` |
+| **Alejandro Flores** | SVM polinómico y SVM gaussiano (RBF) | `src/models/svm_polinomico.py`, `src/models/svm_gaussiano.py` | `notebooks/03a_svm_polinomico.ipynb`, `notebooks/03b_svm_gaussiano.ipynb` |
 | **Gloria Chushig** | SVM lineal | `src/models/linear_svm.py` | `notebooks/04_svm_lineal.ipynb` |
 | Todos | EDA, extractor y comparación | `src/extractor.py`, `src/config.py` | `01_…` y `05_…` |
 
@@ -26,14 +26,16 @@ ProyectoRDA1/
 │
 ├── models/                     # Modelos exportados (los genera el entrenamiento)
 │   ├── modelo_lr.pkl
-│   ├── modelo_rf.pkl
 │   ├── modelo_svm.pkl
+│   ├── modelo_svm_poly.pkl
+│   ├── modelo_svm_rbf.pkl
 │   └── metricas.json           # métricas de prueba (las muestra la app)
 │
 ├── notebooks/
 │   ├── 01_eda_preprocesamiento.ipynb   # común: EDA, 3 gráficos, división
 │   ├── 02_regresion_logistica.ipynb    # Paul
-│   ├── 03_random_forest.ipynb          # Alejandro
+│   ├── 03a_svm_polinomico.ipynb        # Alejandro
+│   ├── 03b_svm_gaussiano.ipynb         # Alejandro
 │   ├── 04_svm_lineal.ipynb             # Gloria
 │   └── 05_comparacion_modelos.ipynb    # tabla, ROC superpuestas, ganador
 │
@@ -48,11 +50,12 @@ ProyectoRDA1/
 │   └── models/
 │       ├── __init__.py         # registro de modelos y armado del Pipeline
 │       ├── logistic_regression.py
-│       ├── random_forest.py
-│       └── linear_svm.py
+│       ├── linear_svm.py
+│       ├── svm_polinomico.py
+│       └── svm_gaussiano.py
 │
 ├── scripts/
-│   ├── entrenar.py             # python -m scripts.entrenar rf
+│   ├── entrenar.py             # python -m scripts.entrenar svm_rbf
 │   └── validar_extractor.py    # python -m scripts.validar_extractor
 │
 └── docs/
@@ -84,12 +87,14 @@ Evaluación en el conjunto de prueba (23.047 URLs, 3.318 de phishing), después 
 
 | Modelo | Recall | Precision | F1 | AUC | Ataques no detectados (FN) | Falsas alarmas (FP) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Regresión Logística | 0,920 | 0,686 | 0,786 | 0,977 | 264 | 1.396 |
-| **Random Forest 🏆** | **0,947** | 0,894 | **0,920** | **0,993** | **176** | 372 |
-| SVM lineal | 0,758 | **0,910** | 0,827 | 0,976 | 803 | **248** |
+| Regresión Logística | **0,920** | 0,686 | 0,786 | 0,977 | **264** | 1.396 |
+| SVM lineal | 0,758 | 0,910 | 0,827 | 0,976 | 803 | 248 |
+| SVM polinómico | 0,862 | **0,940** | 0,899 | 0,990 | 459 | **182** |
+| **SVM gaussiano (RBF) 🏆** | 0,903 | 0,915 | **0,909** | **0,991** | 322 | 277 |
 
-**Modelo ganador: Random Forest** (`config.MODELO_POR_DEFECTO = "rf"`). Tiene el mejor Recall, F1 y AUC, y la
-validación cruzada estratificada de 5 particiones confirma que la ventaja es estable (ver notebook `05`).
+**Modelo ganador: SVM gaussiano** (`config.MODELO_POR_DEFECTO = "svm_rbf"`). Tiene el mejor F1 y AUC, con pocos ataques
+no detectados y pocas falsas alarmas; la validación cruzada estratificada de 5 particiones confirma que la ventaja es
+estable (ver notebook `05`).
 
 - El extractor (`src/extractor.py`) reproduce las 22 variables del dataset: `python -m scripts.validar_extractor` → 22/22 ✅.
 - Informe final: [`docs/Informe_PhishGuard.pdf`](docs/Informe_PhishGuard.pdf) (versión editable en `.docx`).
@@ -106,7 +111,7 @@ python -m pip install -r requirements.txt   # Python 3.11+ (scikit-learn 1.9.1)
 Entrenar (desde la raíz del proyecto):
 
 ```bash
-python -m scripts.entrenar lr       # o rf, svm, todos
+python -m scripts.entrenar lr       # o svm, svm_poly, svm_rbf, todos
 ```
 
 Abrir la aplicación:
@@ -119,7 +124,7 @@ La app carga sola los `.pkl` que existan en `models/`. Si hay más de uno, muest
 
 ## 📊 Métricas
 
-El dataset está desbalanceado (~85,6 % benignas y ~14,4 % phishing, sin duplicados), así que el *Accuracy* por sí solo no basta. Los tres modelos se evalúan con las mismas métricas de la clase phishing:
+El dataset está desbalanceado (~85,6 % benignas y ~14,4 % phishing, sin duplicados), así que el *Accuracy* por sí solo no basta. Los cuatro modelos se evalúan con las mismas métricas de la clase phishing:
 
 - **Matriz de confusión:** VP, FP (falsa alarma) y FN (phishing no detectado).
 - **Recall:** métrica prioritaria, porque minimiza los falsos negativos.

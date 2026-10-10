@@ -3,7 +3,8 @@ Entrena, evalúa y exporta un modelo desde la terminal (alternativa al notebook)
 
 Uso (desde la raíz del proyecto):
     python -m scripts.entrenar lr          # Paul
-    python -m scripts.entrenar rf          # Alejandro
+    python -m scripts.entrenar svm_poly    # Alejandro
+    python -m scripts.entrenar svm_rbf     # Alejandro
     python -m scripts.entrenar svm         # Gloria
     python -m scripts.entrenar todos
 """

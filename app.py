@@ -213,7 +213,7 @@ md(f"""
 # 📄 PÁGINA 1: ANALIZAR URL (HERRAMIENTA PRINCIPAL)
 # ==============================================================================
 if current_page == "analizar":
-    # Ejemplos verificados con el modelo ganador (Random Forest). Son parecidos a las URLs
+    # Ejemplos verificados con el modelo ganador. Son parecidos a las URLs
     # del dataset: benignas = páginas principales; phishing = hosting gratuito y cadenas raras.
     EJ_PHISH = "https://bancopichincha-seguridad.webcindario.com/login.php?id=8823"
     
@@ -364,24 +364,28 @@ if current_page == "analizar":
 elif current_page == "modelos":
     md("""
     <div class="pg-title">Modelos de Inteligencia Artificial</div>
-    <div class="pg-sub">Fundamentación técnica y comparación de los tres algoritmos entrenados para la clasificación de phishing sobre más de 115.000 URLs únicas.</div>
-    <div class="g3">
+    <div class="pg-sub">Fundamentación técnica y comparación de los cuatro algoritmos entrenados para la clasificación de phishing sobre más de 115.000 URLs únicas.</div>
+    <div class="g2">
       <div class="card"><h3>1. Regresión Logística</h3><ul>
         <li><strong>Tipo:</strong> Clasificador probabilístico lineal basado en la función sigmoide.</li>
         <li><strong>Certeza:</strong> Probabilidades continuas de 0% a 100% con <code>.predict_proba()</code>.</li>
         <li><strong>Interpretabilidad:</strong> Influencia de cada variable mediante coeficientes y odds-ratios.</li>
         <li><strong>Desbalance:</strong> <code>class_weight='balanced'</code> para la clase minoritaria (14%).</li></ul></div>
-      <div class="card"><h3>2. Random Forest</h3><ul>
-        <li><strong>Tipo:</strong> Ensamble no lineal de árboles de decisión.</li>
-        <li><strong>Interacciones:</strong> Detecta combinaciones no lineales (p. ej. HTTPS + alta entropía + muchos dígitos).</li>
-        <li><strong>Variables clave:</strong> <code>is_https</code>, <code>entropy</code>, <code>digit_ratio</code> y <code>dom_len</code>.</li>
-        <li><strong>Importancia de variables:</strong> Reducción de impureza de Gini.</li>
-        <li><strong>Escalado:</strong> No lo necesita (particiones por umbral).</li></ul></div>
-      <div class="card"><h3>3. SVM lineal</h3><ul>
+      <div class="card"><h3>2. SVM lineal</h3><ul>
         <li><strong>Tipo:</strong> Clasificador lineal de margen máximo.</li>
         <li><strong>Escalado:</strong> Requiere <code>StandardScaler</code>, es sensible a la escala.</li>
         <li><strong>Probabilidades:</strong> Calibradas para obtener valores de 0% a 100%.</li>
         <li><strong>Ventaja:</strong> Rápido y robusto en espacios con muchas variables.</li></ul></div>
+      <div class="card"><h3>3. SVM polinómico</h3><ul>
+        <li><strong>Tipo:</strong> SVM con kernel polinómico de grado 3: <code>K(x, x') = (γ·x·x' + 1)³</code>.</li>
+        <li><strong>Interacciones:</strong> Combina hasta 3 variables a la vez sin calcularlas explícitamente (<em>kernel trick</em>).</li>
+        <li><strong>Escalado:</strong> Requiere <code>StandardScaler</code>.</li>
+        <li><strong>Probabilidades:</strong> Escalado de Platt (<code>probability=True</code>).</li></ul></div>
+      <div class="card"><h3>4. SVM gaussiano (RBF)</h3><ul>
+        <li><strong>Tipo:</strong> SVM con kernel gaussiano: <code>K(x, x') = exp(−γ·‖x − x'‖²)</code>.</li>
+        <li><strong>Frontera:</strong> No lineal y flexible: la similitud entre URLs decae con su distancia.</li>
+        <li><strong>Escalado:</strong> Requiere <code>StandardScaler</code>.</li>
+        <li><strong>Probabilidades:</strong> Escalado de Platt (<code>probability=True</code>).</li></ul></div>
     </div>
     """)
 

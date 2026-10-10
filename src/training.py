@@ -1,8 +1,8 @@
 """
 Flujo de entrenamiento común. Lo usan los notebooks y scripts/entrenar.py.
 
-    entrenar_y_evaluar("rf")  → entrena con 80%, evalúa en 20%, guarda métricas
-    exportar_final("rf")      → reentrena con 100% y guarda models/modelo_rf.pkl
+    entrenar_y_evaluar("svm_rbf")  → entrena con 80%, evalúa en 20%, guarda métricas
+    exportar_final("svm_rbf")      → reentrena con 100% y guarda models/modelo_svm_rbf.pkl
 """
 import joblib
 
@@ -35,7 +35,7 @@ def exportar_final(clave: str, df=None):
 
     config.DIR_MODELOS.mkdir(exist_ok=True)
     ruta = ruta_modelo(clave)
-    # compress=3 reduce mucho el tamaño (clave para el Random Forest: GitHub
+    # compress=3 reduce el tamaño del .pkl (los SVM guardan sus vectores de soporte; GitHub
     # rechaza archivos de más de 100 MB) y el .pkl se carga igual con joblib.load.
     joblib.dump(pipeline, ruta, compress=3)
-    return ruta.relative_to(config.RAIZ)       # p. ej. models/modelo_rf.pkl
+    return ruta.relative_to(config.RAIZ)       # p. ej. models/modelo_svm_rbf.pkl

@@ -1,10 +1,11 @@
 """
-Registro de los 3 modelos del proyecto.
+Registro de los 4 modelos del proyecto.
 
 Cada integrante solo trabaja en SU archivo:
     logistic_regression.py  → Paul Rosero
-    random_forest.py        → Alejandro Flores
     linear_svm.py           → Gloria Chushig
+    svm_polinomico.py       → Alejandro Flores
+    svm_gaussiano.py        → Alejandro Flores
 
 Cada archivo define unas constantes (NOMBRE, RESPONSABLE, ESCALAR...) y una
 función construir_clasificador() que devuelve el estimador de scikit-learn.
@@ -13,13 +14,14 @@ ya está resuelto y es común.
 """
 from sklearn.pipeline import Pipeline
 
-from src.models import linear_svm, logistic_regression, random_forest
+from src.models import linear_svm, logistic_regression, svm_gaussiano, svm_polinomico
 from src.preprocessing import construir_preprocesador
 
 MODELOS = {
     "lr": logistic_regression,
-    "rf": random_forest,
     "svm": linear_svm,
+    "svm_poly": svm_polinomico,
+    "svm_rbf": svm_gaussiano,
 }
 
 
