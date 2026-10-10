@@ -1,5 +1,5 @@
 """
-Modelo 4 — SVM con kernel gaussiano (RBF)
+Modelo 3 — SVM con kernel gaussiano (RBF)
 Responsable: Alejandro Flores
 """
 from sklearn.svm import SVC

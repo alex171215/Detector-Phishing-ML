@@ -1,10 +1,9 @@
 """
-Registro de los 4 modelos del proyecto.
+Registro de los 3 modelos del proyecto (uno por integrante).
 
 Cada integrante solo trabaja en SU archivo:
     logistic_regression.py  → Paul Rosero
     linear_svm.py           → Gloria Chushig
-    svm_polinomico.py       → Alejandro Flores
     svm_gaussiano.py        → Alejandro Flores
 
 Cada archivo define unas constantes (NOMBRE, RESPONSABLE, ESCALAR...) y una
@@ -14,13 +13,12 @@ ya está resuelto y es común.
 """
 from sklearn.pipeline import Pipeline
 
-from src.models import linear_svm, logistic_regression, svm_gaussiano, svm_polinomico
+from src.models import linear_svm, logistic_regression, svm_gaussiano
 from src.preprocessing import construir_preprocesador
 
 MODELOS = {
     "lr": logistic_regression,
     "svm": linear_svm,
-    "svm_poly": svm_polinomico,
     "svm_rbf": svm_gaussiano,
 }
 
